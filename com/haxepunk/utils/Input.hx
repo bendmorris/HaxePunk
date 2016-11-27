@@ -7,8 +7,10 @@ import flash.ui.Keyboard;
 import flash.ui.Multitouch;
 import flash.ui.MultitouchInputMode;
 import com.haxepunk.HXP;
+import com.haxepunk.ds.Either;
+import openfl.ui.Mouse;
 
-#if (cpp || neko)
+#if (openfl_legacy && (cpp || neko))
 	import openfl.events.JoystickEvent;
 #end
 
@@ -17,6 +19,23 @@ import tv.ouya.console.api.OuyaController;
 import openfl.utils.JNI;
 #end
 
+/**
+ * Abstract representing either a `String` or a `Int`.
+ * 
+ * Conversion is automatic, no need to use this.
+ */
+abstract InputType(Either<String, Int>)
+{
+	@:dox(hide) public inline function new( e:Either<String, Int> ) this = e;
+	@:dox(hide) public var type(get, never):Either<String, Int>;
+	@:to inline function get_type() return this;
+	@:from static function fromLeft(v:String) return new InputType(Left(v));
+	@:from static function fromRight(v:Int) return new InputType(Right(v));
+}
+
+/**
+ * Manage the different inputs.
+ */
 class Input
 {
 
@@ -49,36 +68,44 @@ class Input
 
 #if !js
 	/**
-	 * If the right button mouse is held down
+	 * If the right button mouse is held down.
+	 * Not available in html5.
 	 */
 	public static var rightMouseDown:Bool;
 	/**
-	 * If the right button mouse is up
+	 * If the right button mouse is up.
+	 * Not available in html5.
 	 */
 	public static var rightMouseUp:Bool;
 	/**
-	 * If the right button mouse was recently pressed
+	 * If the right button mouse was recently pressed.
+	 * Not available in html5.
 	 */
 	public static var rightMousePressed:Bool;
 	/**
-	 * If the right button mouse was recently released
+	 * If the right button mouse was recently released.
+	 * Not available in html5.
 	 */
 	public static var rightMouseReleased:Bool;
 
 	/**
-	 * If the middle button mouse is held down
+	 * If the middle button mouse is held down.
+	 * Not available in html5.
 	 */
 	public static var middleMouseDown:Bool;
 	/**
-	 * If the middle button mouse is up
+	 * If the middle button mouse is up.
+	 * Not available in html5.
 	 */
 	public static var middleMouseUp:Bool;
 	/**
-	 * If the middle button mouse was recently pressed
+	 * If the middle button mouse was recently pressed.
+	 * Not available in html5.
 	 */
 	public static var middleMousePressed:Bool;
 	/**
-	 * If the middle button mouse was recently released
+	 * If the middle button mouse was recently released.
+	 * Not available in html5.
 	 */
 	public static var middleMouseReleased:Bool;
 #end
@@ -97,7 +124,7 @@ class Input
 	 * If the mouse wheel was moved this frame, this was the delta.
 	 */
 	public static var mouseWheelDelta(get, never):Int;
-	public static function get_mouseWheelDelta():Int
+	private static function get_mouseWheelDelta():Int
 	{
 		if (mouseWheel)
 		{
@@ -105,6 +132,22 @@ class Input
 			return _mouseWheelDelta;
 		}
 		return 0;
+	}
+
+	/**
+	 * Shows the native cursor
+	 */
+	public static function showCursor()
+	{
+		Mouse.show();
+	}
+
+	/**
+	 * Hides the native cursor
+	 */
+	public static function hideCursor()
+	{
+		Mouse.hide();
 	}
 
 	/**
@@ -131,7 +174,7 @@ class Input
 	public static var mouseFlashX(get, never):Int;
 	private static function get_mouseFlashX():Int
 	{
-		return Std.int(HXP.stage.mouseX);
+		return Std.int(HXP.stage.mouseX - HXP.screen.x);
 	}
 
 	/**
@@ -140,7 +183,7 @@ class Input
 	public static var mouseFlashY(get, never):Int;
 	private static function get_mouseFlashY():Int
 	{
-		return Std.int(HXP.stage.mouseY);
+		return Std.int(HXP.stage.mouseY - HXP.screen.y);
 	}
 
 	/**
@@ -158,31 +201,28 @@ class Input
 	 * @param	input		An input name or key to check for.
 	 * @return	True or false.
 	 */
-	public static function check(input:Dynamic):Bool
+	public static function check(input:InputType):Bool
 	{
-		if (Std.is(input, String))
+		switch (input.type)
 		{
+			case Left(s):
 #if debug
-			if (!_control.exists(input))
-			{
-				HXP.log("Input '" + input + "' not defined");
-				return false;
-			}
-#end
-			var v:Array<Int> = _control.get(input),
-				i:Int = v.length;
-			while (i-- > 0)
-			{
-				if (v[i] < 0)
+				if (!_control.exists(s))
 				{
-					if (_keyNum > 0) return true;
-					continue;
+					HXP.log("Input '" + s + "' not defined");
+					return false;
 				}
-				if (_key[v[i]] == true) return true;
-			}
-			return false;
+#end
+				for (key in _control.get(s))
+				{
+					if ((key < 0 && _keyNum > 0) || _key.get(key)) return true;
+				}
+				return false;
+			case Right(i):
+				return i < 0 ? _keyNum > 0 : _key.get(i);
 		}
-		return input < 0 ? _keyNum > 0 : _key.get(input);
+
+		return false;
 	}
 
 	/**
@@ -190,19 +230,22 @@ class Input
 	 * @param	input		An input name or key to check for.
 	 * @return	True or false.
 	 */
-	public static function pressed(input:Dynamic):Bool
+	public static function pressed(input:InputType):Bool
 	{
-		if (Std.is(input, String) && _control.exists(input))
+		switch (input.type)
 		{
-			var v:Array<Int> = _control.get(input),
-				i:Int = v.length;
-			while (i-- > 0)
-			{
-				if ((v[i] < 0) ? _pressNum != 0 : HXP.indexOf(_press, v[i]) >= 0) return true;
-			}
-			return false;
+			case Left(s):
+				if (_control.exists(s))
+				{
+					for (key in _control.get(s))
+					{
+						if (key < 0 ? _pressNum != 0 : HXP.indexOf(_press, key) >= 0) return true;
+					}
+				}
+			case Right(i):
+				return i < 0 ? _pressNum != 0 : HXP.indexOf(_press, i) >= 0;
 		}
-		return (input < 0) ? _pressNum != 0 : HXP.indexOf(_press, input) >= 0;
+		return false;
 	}
 
 	/**
@@ -210,19 +253,19 @@ class Input
 	 * @param	input		An input name or key to check for.
 	 * @return	True or false.
 	 */
-	public static function released(input:Dynamic):Bool
+	public static function released(input:InputType):Bool
 	{
-		if (Std.is(input, String))
+		switch (input.type)
 		{
-			var v:Array<Int> = _control.get(input),
-				i:Int = v.length;
-			while (i-- > 0)
-			{
-				if ((v[i] < 0) ? _releaseNum != 0 : HXP.indexOf(_release, v[i]) >= 0) return true;
-			}
-			return false;
+			case Left(s):
+				for (key in _control.get(s))
+				{
+					if (key < 0 ? _releaseNum != 0 : HXP.indexOf(_release, key) >= 0) return true;
+				}
+				return false;
+			case Right(i):
+				return i < 0 ? _releaseNum != 0 : HXP.indexOf(_release, i) >= 0;
 		}
-		return (input < 0) ? _releaseNum != 0 : HXP.indexOf(_release, input) >= 0;
 	}
 
 	public static function touchPoints(touchCallback:Touch->Void)
@@ -233,8 +276,11 @@ class Input
 		}
 	}
 
-	public static var touches(get, never):Map<Int,Touch>;
-	private static inline function get_touches():Map<Int,Touch> { return _touches; }
+	public static var touches(get, never):Map<Int, Touch>;
+	private static inline function get_touches():Map<Int, Touch> return _touches; 
+
+	public static var touchOrder(get, never):Array<Int>;
+	private static inline function get_touchOrder():Array<Int> return _touchOrder; 
 
 	/**
 	 * Returns a joystick object (creates one if not connected)
@@ -272,6 +318,7 @@ class Input
 	/**
 	 * Enables input handling
 	 */
+	@:dox(hide)
 	public static function enable()
 	{
 		if (!_enabled && HXP.stage != null)
@@ -299,7 +346,7 @@ class Input
 				HXP.stage.addEventListener(TouchEvent.TOUCH_END, onTouchEnd);
 			}
 
-#if (openfl && (cpp || neko))
+#if (openfl_legacy && (cpp || neko))
 			HXP.stage.addEventListener(JoystickEvent.AXIS_MOVE, onJoyAxisMove);
 			HXP.stage.addEventListener(JoystickEvent.BALL_MOVE, onJoyBallMove);
 			HXP.stage.addEventListener(JoystickEvent.BUTTON_DOWN, onJoyButtonDown);
@@ -308,7 +355,7 @@ class Input
 
 		#if ouya
 			// Initializing OuyaController
-			var getContext = JNI.createStaticMethod("org.haxe.lime.GameActivity", "getContext", "()Landroid/content/Context;",true);
+			var getContext = JNI.createStaticMethod("org.haxe.lime.GameActivity", "getContext", "()Landroid/content/Context;", true);
 			OuyaController.init(getContext());
 		#end
 #end
@@ -376,12 +423,12 @@ class Input
 	/**
 	 * Updates the input states
 	 */
+	@:dox(hide)
 	public static function update()
 	{
-		while (_pressNum-- > -1) _press[_pressNum] = -1;
-		_pressNum = 0;
-		while (_releaseNum-- > -1) _release[_releaseNum] = -1;
-		_releaseNum = 0;
+		while (_pressNum > 0) _press[--_pressNum] = -1;
+		while (_releaseNum > 0) _release[--_releaseNum] = -1;
+		
 		if (mousePressed) mousePressed = false;
 		if (mouseReleased) mouseReleased = false;
 
@@ -392,12 +439,23 @@ class Input
 		if (rightMouseReleased) rightMouseReleased = false;
 	#end
 
-#if (openfl && (cpp || neko))
+#if (openfl_legacy && (cpp || neko))
 		for (joystick in _joysticks) joystick.update();
 #end
 		if (multiTouchSupported)
 		{
 			for (touch in _touches) touch.update();
+			
+			if (Gesture.enabled) Gesture.update();
+			
+			for (touch in _touches)
+			{
+				if (touch.released && !touch.pressed)
+				{
+					_touches.remove(touch.id);
+					_touchOrder.remove(touch.id);
+				}
+			}
 		}
 	}
 
@@ -444,7 +502,7 @@ class Input
 		}
 	}
 
-	public static function keyCode(e:KeyboardEvent) : Int
+	private static function keyCode(e:KeyboardEvent):Int
 	{
 	#if (flash || js)
 		return e.keyCode;
@@ -521,23 +579,29 @@ class Input
 	{
 		var touchPoint = new Touch(e.stageX / HXP.screen.fullScaleX, e.stageY / HXP.screen.fullScaleY, e.touchPointID);
 		_touches.set(e.touchPointID, touchPoint);
-		_touchNum += 1;
+		_touchOrder.push(e.touchPointID);
 	}
 
 	private static function onTouchMove(e:TouchEvent)
 	{
-		var point = _touches.get(e.touchPointID);
-		point.x = e.stageX / HXP.screen.fullScaleX;
-		point.y = e.stageY / HXP.screen.fullScaleY;
+		// maybe we missed the begin event sometimes?
+		if (_touches.exists(e.touchPointID))
+		{
+			var point = _touches.get(e.touchPointID);
+			point.x = e.stageX / HXP.screen.fullScaleX;
+			point.y = e.stageY / HXP.screen.fullScaleY;
+		}
 	}
 
 	private static function onTouchEnd(e:TouchEvent)
 	{
-		_touches.remove(e.touchPointID);
-		_touchNum -= 1;
+		if (_touches.exists(e.touchPointID))
+		{
+			_touches.get(e.touchPointID).released = true;
+		}
 	}
 
-#if (openfl && (cpp || neko))
+#if (openfl_legacy && (cpp || neko))
 
 	private static function onJoyAxisMove(e:JoystickEvent)
 	{
@@ -603,7 +667,6 @@ class Input
 	private static inline var kKeyStringMax = 100;
 
 	private static var _enabled:Bool = false;
-	private static var _touchNum:Int = 0;
 	private static var _key:Map<Int, Bool> = new Map<Int, Bool>();
 	private static var _keyNum:Int = 0;
 	private static var _press:Array<Int> = new Array<Int>();
@@ -611,8 +674,9 @@ class Input
 	private static var _release:Array<Int> = new Array<Int>();
 	private static var _releaseNum:Int = 0;
 	private static var _mouseWheelDelta:Int = 0;
-	private static var _touches:Map<Int,Touch> = new Map<Int,Touch>();
-	private static var _joysticks:Map<Int,Joystick> = new Map<Int,Joystick>();
-	private static var _control:Map<String,Array<Int>> = new Map<String,Array<Int>>();
+	private static var _touches:Map<Int, Touch> = new Map<Int, Touch>();
+	private static var _touchOrder:Array<Int> = new Array();
+	private static var _joysticks:Map<Int, Joystick> = new Map<Int, Joystick>();
+	private static var _control:Map<String, Array<Int>> = new Map<String, Array<Int>>();
 	private static var _nativeCorrection:Map<String, Int> = new Map<String, Int>();
 }

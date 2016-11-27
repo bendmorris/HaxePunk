@@ -1,27 +1,22 @@
 package com.haxepunk.debug;
 
-import com.haxepunk.utils.Input;
-
+import haxe.ds.IntMap;
 import flash.display.Bitmap;
 import flash.display.Sprite;
 import flash.events.MouseEvent;
-import flash.geom.Rectangle;
 import flash.text.TextField;
 import flash.text.TextFormat;
-import flash.text.TextFormatAlign;
-import haxe.ds.IntMap;
-
 import openfl.Assets;
 
+@:dox(hide)
 class VisibleLabel extends Sprite
 {
-
 	public function new(textFormat:TextFormat)
 	{
 		super();
 
-		active = new Bitmap(Assets.getBitmapData("gfx/debug/console_visible.png"));
-		inactive = new Bitmap(Assets.getBitmapData("gfx/debug/console_hidden.png"));
+		active = new Bitmap(Assets.getBitmapData("graphics/debug/console_visible.png"));
+		inactive = new Bitmap(Assets.getBitmapData("graphics/debug/console_hidden.png"));
 
 		label = new TextField();
 		label.defaultTextFormat = textFormat;
@@ -74,6 +69,7 @@ class VisibleLabel extends Sprite
 
 }
 
+@:dox(hide)
 class MaskLabel extends VisibleLabel
 {
 	public function new(textFormat:TextFormat)
@@ -90,6 +86,7 @@ class MaskLabel extends VisibleLabel
 	}
 }
 
+@:dox(hide)
 class LayerLabel extends VisibleLabel
 {
 
@@ -120,6 +117,7 @@ class LayerLabel extends VisibleLabel
 
 }
 
+@:dox(hide)
 class LayerList extends Sprite
 {
 	public function new(width:Int=250, height:Int=400)

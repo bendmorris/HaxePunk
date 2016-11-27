@@ -15,7 +15,7 @@ class QuadPath extends Motion
 	 * @param	complete	Optional completion callback.
 	 * @param	type		Tween type.
 	 */
-	public function new(?complete:CompleteCallback, type:TweenType)
+	public function new(?complete:Dynamic -> Void, type:TweenType)
 	{
 		_points = new Array<Point>();
 		_curve = new Array<Point>();
@@ -33,7 +33,7 @@ class QuadPath extends Motion
 	 * @param	duration	Duration of the movement.
 	 * @param	ease		Optional easer function.
 	 */
-	public function setMotion(duration:Float, ease:EaseFunction = null)
+	public function setMotion(duration:Float, ease:Float -> Float = null)
 	{
 		updatePath();
 		_target = duration;
@@ -47,7 +47,7 @@ class QuadPath extends Motion
 	 * @param	speed		Speed of the movement.
 	 * @param	ease		Optional easer function.
 	 */
-	public function setMotionSpeed(speed:Float, ease:EaseFunction = null)
+	public function setMotionSpeed(speed:Float, ease:Float -> Float = null)
 	{
 		updatePath();
 		_target = _distance / speed;
@@ -82,6 +82,7 @@ class QuadPath extends Motion
 	}
 
 	/** @private Starts the Tween. */
+	@:dox(hide)
 	override public function start()
 	{
 		_index = 0;
@@ -89,12 +90,13 @@ class QuadPath extends Motion
 	}
 
 	/** @private Updates the Tween. */
+	@:dox(hide)
 	override public function update()
 	{
 		super.update();
 		if (_index < _curve.length - 1)
 		{
-			while (_t > _curveT[_index + 1]) _index ++;
+			while (_t > _curveT[_index + 1]) _index++;
 		}
 		var td:Float = _curveT[_index],
 			tt:Float = _curveT[_index + 1] - td;
@@ -136,7 +138,7 @@ class QuadPath extends Motion
 				c.y = p.y;
 			}
 			l = p;
-			i ++;
+			i++;
 		}
 
 		// find the total distance of the path
@@ -145,7 +147,7 @@ class QuadPath extends Motion
 		while (i < _curve.length - 1)
 		{
 			_curveD[i] = curveLength(_curve[i], _points[i + 1], _curve[i + 1]);
-			_distance += _curveD[i ++];
+			_distance += _curveD[i++];
 		}
 
 		// find t for each point on the curve
@@ -154,7 +156,7 @@ class QuadPath extends Motion
 		while (i < _curve.length - 1)
 		{
 			d += _curveD[i];
-			_curveT[i ++] = d / _distance;
+			_curveT[i++] = d / _distance;
 		}
 		_curveT[_curve.length - 1] = 1;
 	}
@@ -163,7 +165,7 @@ class QuadPath extends Motion
 	 * Amount of points on the path.
 	 */
 	public var pointCount(get, null):Float;
-	private function get_pointCount():Float { return _points.length; }
+	private function get_pointCount():Float return _points.length; 
 
 	/** @private Calculates the lenght of the curve. */
 	private function curveLength(start:Point, control:Point, finish:Point):Float

@@ -2,21 +2,23 @@ package com.haxepunk;
 
 import com.haxepunk.Tween;
 
+/**
+ * Abstract class used to add the ability to add tweens.
+ */
 class Tweener
 {
 	public var active:Bool;
 	public var autoClear:Bool;
 
-	public function new()
+	@:allow(com.haxepunk)
+	private function new()
 	{
 		active = true;
 		autoClear = false;
 	}
 
-	public function update()
-	{
-
-	}
+	@:dox(hide)
+	public function update() {}
 
 	/**
 	 * Add the tween to the tween list.
@@ -44,6 +46,8 @@ class Tweener
 
 		if (start)
 			_tween.start();
+		else
+			_tween.active = false;
 
 		return t;
 	}
@@ -113,8 +117,9 @@ class Tweener
 		}
 	}
 
+	/** If there is at least a tween. */
 	public var hasTween(get, never):Bool;
-	private function get_hasTween():Bool { return (_tween != null); }
+	private function get_hasTween():Bool return (_tween != null); 
 
 	private var _tween:Tween;
 }

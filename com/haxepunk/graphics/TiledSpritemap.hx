@@ -1,10 +1,9 @@
 package com.haxepunk.graphics;
 
-import flash.display.BitmapData;
 import flash.display.Graphics;
 import flash.geom.Point;
 import com.haxepunk.HXP;
-import com.haxepunk.graphics.Spritemap;
+import com.haxepunk.Graphic;
 
 /**
  * Special Spritemap object that can display blocks of animated sprites.
@@ -20,7 +19,7 @@ class TiledSpritemap extends Spritemap
 	 * @param	height			Height of the block to render.
 	 * @param	callbackFunc	Optional callback function for animation end.
 	 */
-	public function new(source:Dynamic, frameWidth:Int = 0, frameHeight:Int = 0, width:Int = 0, height:Int = 0, callbackFunc:CallbackFunction = null)
+	public function new(source:TileType, frameWidth:Int = 0, frameHeight:Int = 0, width:Int = 0, height:Int = 0, callbackFunc:Void -> Void = null)
 	{
 		_graphics = HXP.sprite.graphics;
 		_offsetX = _offsetY = 0;
@@ -39,6 +38,7 @@ class TiledSpritemap extends Spritemap
 	}
 
 	/** @private Updates the buffer. */
+	@:dox(hide)
 	override public function updateBuffer(clearBefore:Bool = false)
 	{
 		if (blit)
@@ -77,6 +77,7 @@ class TiledSpritemap extends Spritemap
 	}
 
 	/** Renders the image. */
+	@:dox(hide)
 	override public function renderAtlas(layer:Int, point:Point, camera:Point)
 	{
 		// determine drawing location
@@ -109,7 +110,7 @@ class TiledSpritemap extends Spritemap
 	 * The x-offset of the texture.
 	 */
 	public var offsetX(get, set):Float;
-	private function get_offsetX():Float { return _offsetX; }
+	private function get_offsetX():Float return _offsetX; 
 	private function set_offsetX(value:Float):Float
 	{
 		if (_offsetX == value) return value;
@@ -122,7 +123,7 @@ class TiledSpritemap extends Spritemap
 	 * The y-offset of the texture.
 	 */
 	public var offsetY(get, set):Float;
-	private function get_offsetY():Float { return _offsetY; }
+	private function get_offsetY():Float return _offsetY; 
 	private function set_offsetY(value:Float):Float
 	{
 		if (_offsetY == value) return value;

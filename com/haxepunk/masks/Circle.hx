@@ -12,7 +12,6 @@ import flash.geom.Point;
 /**
  * Uses circular area to determine collision.
  */
-
 class Circle extends Hitbox
 {
 	/**
@@ -38,28 +37,28 @@ class Circle extends Hitbox
 	/** @private Collides against an Entity. */
 	override private function collideMask(other:Mask):Bool
 	{
-		var distanceX = Math.abs(parent.x + _x - other.parent.x - other.parent.width * 0.5),
-			distanceY = Math.abs(parent.y + _y - other.parent.y - other.parent.height * 0.5);
+		var distanceX = Math.abs(_parent.x + _x - other._parent.x - other._parent.width * 0.5),
+			distanceY = Math.abs(_parent.y + _y - other._parent.y - other._parent.height * 0.5);
 
-		if (distanceX > other.parent.width * 0.5 + radius
-			|| distanceY > other.parent.height * 0.5 + radius)
+		if (distanceX > other._parent.width * 0.5 + radius
+			|| distanceY > other._parent.height * 0.5 + radius)
 		{
 			return false;//The hitbox is to far away so return false
 		}
-		if (distanceX <= other.parent.width * 0.5|| distanceY <= other.parent.height * 0.5)
+		if (distanceX <= other._parent.width * 0.5 || distanceY <= other._parent.height * 0.5)
 		{
 			return true;
 		}
-		var distanceToCorner = (distanceX - other.parent.width * 0.5) * (distanceX - other.parent.width * 0.5)
-			+ (distanceY - other.parent.height * 0.5) * (distanceY - other.parent.height * 0.5);
+		var distanceToCorner = (distanceX - other._parent.width * 0.5) * (distanceX - other._parent.width * 0.5)
+			+ (distanceY - other._parent.height * 0.5) * (distanceY - other._parent.height * 0.5);
 
 		return distanceToCorner <= _squaredRadius;
 	}
 
 	private function collideCircle(other:Circle):Bool
 	{
-		var dx:Float = (parent.x + _x) - (other.parent.x + other._x);
-		var dy:Float = (parent.y + _y) - (other.parent.y + other._y);
+		var dx:Float = (_parent.x + _x) - (other._parent.x + other._x);
+		var dy:Float = (_parent.y + _y) - (other._parent.y + other._y);
 		return (dx * dx + dy * dy) < Math.pow(_radius + other._radius, 2);
 	}
 
@@ -93,19 +92,11 @@ class Circle extends Hitbox
 
 	private function collideGrid(other:Grid):Bool
 	{
-		var thisX:Float = _x, thisY:Float = _y;
-		if (parent != null)
-		{
-			thisX += parent.x;
-			thisY += parent.y;
-		}
+		var thisX:Float = _x + _parent.x,
+			thisY:Float = _y + _parent.y;
 
-		var otherX:Float = other.x, otherY:Float = other.y;
-		if (other.parent != null)
-		{
-			otherX += other.parent.x;
-			otherY += other.parent.y;
-		}
+		var otherX:Float = other.x + other._parent.x,
+			otherY:Float = other.y + other._parent.y;
 
 		var entityDistX:Float = thisX - otherX, entityDistY:Float = thisY - otherY;
 
@@ -144,19 +135,11 @@ class Circle extends Hitbox
 
 	private function collideSlopedGrid(other:SlopedGrid):Bool
 	{
-		var thisX:Float = _x, thisY:Float = _y;
-		if (parent != null)
-		{
-			thisX += parent.x;
-			thisY += parent.y;
-		}
+		var thisX:Float = _x + _parent.x,
+			thisY:Float = _y + _parent.y;
 
-		var otherX:Float = other.x, otherY:Float = other.y;
-		if (other.parent != null)
-		{
-			otherX += other.parent.x;
-			otherY += other.parent.y;
-		}
+		var otherX:Float = other.x + other._parent.x,
+			otherY:Float = other.y + other._parent.y;
 
 		var entityDistX:Float = thisX - otherX, entityDistY:Float = thisY - otherY;
 
@@ -235,12 +218,8 @@ class Circle extends Hitbox
 		var _otherHalfWidth:Float = other._width * 0.5;
 		var _otherHalfHeight:Float = other._height * 0.5;
 
-		var px:Float = _x, py:Float = _y;
-		if (parent != null)
-		{
-			px += parent.x;
-			py += parent.y;
-		}
+		var px:Float = _x + _parent.x,
+			py:Float = _y + _parent.y;
 
 		var ox:Float = other._x, oy:Float = other._y;
 		if (other.parent != null)
@@ -266,25 +245,27 @@ class Circle extends Hitbox
 		return distanceToCorner <= _squaredRadius;
 	}
 
+	@:dox(hide)
 	override public function project(axis:Vector, projection:Projection):Void
 	{
 		projection.min = -_radius;
 		projection.max = _radius;
 	}
 
+	@:dox(hide)
 	override public function debugDraw(graphics:Graphics, scaleX:Float, scaleY:Float):Void
 	{
-		graphics.drawCircle((parent.x + _x - HXP.camera.x) * scaleX, (parent.y + _y - HXP.camera.y) * scaleY, radius * scaleX);
+		graphics.drawCircle((_parent.x + _x - HXP.camera.x) * scaleX, (_parent.y + _y - HXP.camera.y) * scaleY, radius * scaleX);
 	}
 
-	override private function get_x():Int { return _x - _radius; }
-	override private function get_y():Int { return _y - _radius; }
+	override private function get_x():Int return _x - _radius; 
+	override private function get_y():Int return _y - _radius; 
 
 	/**
 	 * Radius.
 	 */
 	public var radius(get, set):Int;
-	private inline function get_radius():Int { return _radius; }
+	private inline function get_radius():Int return _radius; 
 	private function set_radius(value:Int):Int
 	{
 		if (_radius == value) return value;
@@ -297,14 +278,15 @@ class Circle extends Hitbox
 	}
 
 	/** Updates the parent's bounds for this mask. */
+	@:dox(hide)
 	override public function update()
 	{
 		if (parent != null)
 		{
 			//update entity bounds
-			parent.originX = -_x + radius;
-			parent.originY = -_y + radius;
-			parent.height = parent.width = radius + radius;
+			_parent.originX = -_x + radius;
+			_parent.originY = -_y + radius;
+			_parent.height = _parent.width = radius + radius;
 
 			// update parent list
 			if (list != null)

@@ -1,7 +1,6 @@
 package com.haxepunk.tweens.motion;
 
 import com.haxepunk.Tween;
-import com.haxepunk.utils.Ease;
 import flash.geom.Point;
 
 /**
@@ -14,7 +13,7 @@ class LinearPath extends Motion
 	 * @param	complete	Optional completion callback.
 	 * @param	type		Tween type.
 	 */
-	public function new(?complete:CompleteCallback, ?type:TweenType)
+	public function new(?complete:Dynamic -> Void, ?type:TweenType)
 	{
 		_points = new Array<Point>();
 		_pointD = new Array<Float>();
@@ -31,7 +30,7 @@ class LinearPath extends Motion
 	 * @param	duration		Duration of the movement.
 	 * @param	ease			Optional easer function.
 	 */
-	public function setMotion(duration:Float, ease:EaseFunction = null)
+	public function setMotion(duration:Float, ease:Float -> Float = null)
 	{
 		updatePath();
 		_target = duration;
@@ -45,7 +44,7 @@ class LinearPath extends Motion
 	 * @param	speed		Speed of the movement.
 	 * @param	ease		Optional easer function.
 	 */
-	public function setMotionSpeed(speed:Float, ease:EaseFunction = null)
+	public function setMotionSpeed(speed:Float, ease:Float -> Float = null)
 	{
 		updatePath();
 		_target = distance / speed;
@@ -84,6 +83,7 @@ class LinearPath extends Motion
 	}
 
 	/** @private Starts the Tween. */
+	@:dox(hide)
 	override public function start()
 	{
 		_index = 0;
@@ -91,12 +91,13 @@ class LinearPath extends Motion
 	}
 
 	/** @private Updates the Tween. */
+	@:dox(hide)
 	override public function update()
 	{
 		super.update();
 		if (_index < _points.length - 1)
 		{
-			while (_t > _pointT[_index + 1]) _index ++;
+			while (_t > _pointT[_index + 1]) _index++;
 		}
 		var td:Float = _pointT[_index],
 			tt:Float = _pointT[_index + 1] - td;
@@ -117,9 +118,9 @@ class LinearPath extends Motion
 			return;
 
 		// evaluate t for each point
-		var i:Int = 0;
-		while (i < _points.length)
-			_pointT[i] = _pointD[i ++] / distance;
+		var i:Int = -1;
+		while (++i < _points.length)
+			_pointT[i] = _pointD[i] / distance;
 	}
 
 	/**
@@ -131,7 +132,7 @@ class LinearPath extends Motion
 	 * How many points are on the path.
 	 */
 	public var pointCount(get, never):Float;
-	private function get_pointCount():Float { return _points.length; }
+	private function get_pointCount():Float return _points.length; 
 
 	// Path information.
 	private var _points:Array<Point>;

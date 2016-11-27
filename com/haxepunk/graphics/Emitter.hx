@@ -1,18 +1,11 @@
 package com.haxepunk.graphics;
 
-import com.haxepunk.Graphic;
-import com.haxepunk.graphics.atlas.Atlas;
-import com.haxepunk.graphics.atlas.AtlasRegion;
-import com.haxepunk.HXP;
-import com.haxepunk.RenderMode;
-import com.haxepunk.utils.Input;
-import com.haxepunk.utils.Key;
-import com.haxepunk.utils.Ease;
-
 import flash.display.BitmapData;
-import flash.geom.ColorTransform;
 import flash.geom.Point;
-import flash.geom.Rectangle;
+import com.haxepunk.HXP;
+import com.haxepunk.Graphic;
+import com.haxepunk.graphics.atlas.AtlasRegion;
+import com.haxepunk.utils.Ease;
 
 /**
  * Particle emitter used for emitting and rendering particle sprites.
@@ -26,16 +19,16 @@ class Emitter extends Graphic
 	 * @param	frameWidth		Frame width.
 	 * @param	frameHeight		Frame height.
 	 */
-	public function new(source:Dynamic, frameWidth:Int = 0, frameHeight:Int = 0)
+	public function new(source:ImageOrTileType, frameWidth:Int = 0, frameHeight:Int = 0)
 	{
 		super();
-		_p = new Point();
-		_tint = new ColorTransform();
-		_types = new Map<String,ParticleType>();
+		_types = new Map<String, ParticleType>();
 
 		setSource(source, frameWidth, frameHeight);
 		active = true;
 		particleCount = 0;
+
+		smooth = (HXP.stage.quality != LOW);
 	}
 
 	/**
@@ -44,62 +37,20 @@ class Emitter extends Graphic
 	 * @param	frameWidth		Frame width.
 	 * @param	frameHeight		Frame height.
 	 */
-	public function setSource(source:Dynamic, frameWidth:Int = 0, frameHeight:Int = 0)
+	public function setSource(source:ImageOrTileType, frameWidth:Int = 0, frameHeight:Int = 0)
 	{
-		var region:AtlasRegion = null;
-		if (Std.is(source, BitmapData)) setBitmapSource(source);
-		else if(Std.is(source, AtlasRegion)) region = setAtlasRegion(source);
-		else
+		switch (source.type)
 		{
-			if (HXP.renderMode == RenderMode.HARDWARE)
-			{
-				region = setAtlasRegion(Atlas.loadImageAsRegion(source));
-			}
-			else
-			{
-				setBitmapSource(HXP.getBitmap(source));
-			}
+			case Left(img):
+				_source = new Image(img);
+				_animated = false;
+				blit = false;
+			case Right(tile):
+				_source = new Spritemap(tile, frameWidth, frameHeight);
+				_animated = true;
+				blit = _source.blit;
 		}
-
-		if (_source == null && region == null)
-			throw "Invalid source image.";
-
-		_frameWidth = (frameWidth != 0) ? frameWidth : _width;
-		_frameHeight = (frameHeight != 0) ? frameHeight : _height;
-		_frameCount = Std.int(_width / _frameWidth) * Std.int(_height / _frameHeight);
-
-		if (region != null)
-		{
-			var rect = new Rectangle(0, 0, _frameWidth, _frameHeight);
-			var center = new Point(_frameWidth / 2, _frameHeight / 2);
-			_frames = new Array<AtlasRegion>();
-			for (i in 0..._frameCount)
-			{
-				_frames.push(region.clip(rect, center));
-				rect.x += _frameWidth;
-				if (rect.x >= _width)
-				{
-					rect.y += _frameHeight;
-					rect.x = 0;
-				}
-			}
-		}
-	}
-
-	private inline function setBitmapSource(bitmap:BitmapData)
-	{
-		blit = true;
-		_source = bitmap;
-		_width = Std.int(bitmap.width);
-		_height = Std.int(bitmap.height);
-	}
-
-	private inline function setAtlasRegion(region:AtlasRegion):AtlasRegion
-	{
-		blit = false;
-		_width = Std.int(region.width);
-		_height = Std.int(region.height);
-		return region;
+		_source.centerOrigin();
 	}
 
 	override public function update()
@@ -116,7 +67,11 @@ class Emitter extends Graphic
 		while (p != null)
 		{
 			p._time += e; // Update particle time elapsed
-			if (p._time >= p._duration) // remove on time-out
+
+			var type = p._type;
+			var t = p._time / p._duration;
+
+			if (p._time - (type._trailLength * type._trailDelay) >= p._stopTime)
 			{
 				if (p._next != null) p._next._prev = p._prev;
 				if (p._prev != null) p._prev._next = p._next;
@@ -126,7 +81,7 @@ class Emitter extends Graphic
 				p._prev = null;
 				_cache = p;
 				p = n;
-				particleCount --;
+				particleCount--;
 				continue;
 			}
 
@@ -137,17 +92,18 @@ class Emitter extends Graphic
 
 	/**
 	 * Clears all particles.
+	 * @since	2.5.2
 	 */
-	public function clear() 
+	public function clear()
 	{
 		// quit if there are no particles
-		if (_particle == null) 
+		if (_particle == null)
 		{
 			return;
 		}
-		
+
 		// particle info
-		var p:Particle = _particle, 
+		var p:Particle = _particle,
 			n:Particle;
 
 		// loop through the particles
@@ -165,7 +121,7 @@ class Emitter extends Graphic
 		_particle = null;
 	}
 
-	private inline function renderParticle(renderFunc:ParticleType->Float->Float->Void, point:Point, camera:Point)
+	private inline function renderParticles(renderFunc:Void->Void, point:Point, camera:Point)
 	{
 		// quit if there are no particles
 		if (_particle == null)
@@ -174,12 +130,9 @@ class Emitter extends Graphic
 		}
 		else
 		{
-			// get rendering position
-			_point.x = point.x + x - camera.x * scrollX;
-			_point.y = point.y + y - camera.y * scrollY;
-
 			// particle info
-			var t:Float, td:Float,
+			var t:Float, pt:Float, td:Float,
+				atd:Float, std:Float, rtd:Float, ctd:Float,
 				p:Particle = _particle,
 				type:ParticleType;
 
@@ -188,17 +141,49 @@ class Emitter extends Graphic
 			{
 				// get time scale
 				t = p._time / p._duration;
+				if (p._firstDraw)
+				{
+					p._ox = point.x;
+					p._oy = point.y;
+					p._firstDraw = false;
+				}
 
 				// get particle type
 				type = p._type;
 
 				// get position
 				td = (type._ease == null) ? t : type._ease(t);
-				_p.x = _point.x + p._x + p._moveX * (type._backwards ? 1 - td : td);
-				_p.y = _point.y + p._y + p._moveY * (type._backwards ? 1 - td : td);
-				p._moveY += p._gravity * td;
 
-				renderFunc(type, t, td);
+				var n:Int = type._trailLength;
+				while (n >= 0)
+				{
+					pt = p._time - n * type._trailDelay;
+					n -= 1;
+					t = pt / p._duration;
+					if (t < 0 || pt >= p._stopTime) continue;
+					td = type.ease(type._ease, t);
+					atd = type.ease(type._alphaEase, t);
+					std = type.ease(type._scaleEase, t);
+					rtd = type.ease(type._rotationEase, t);
+					ctd = type.ease(type._colorEase, t);
+
+					if (_animated)
+					{
+						var frame = Std.int(td * type._frames.length);
+						if (frame >= type._frames.length - 1) frame = type._frames.length - 1;
+						var spritemap:Spritemap = cast _source;
+						spritemap.frame = type._frames[frame];
+					}
+					_source.angle = p.angle(rtd);
+					_source.color = p.color(ctd);
+					_source.alpha = p.alpha(atd) * Math.pow(type._trailAlpha, n);
+					_source.scale = scale * p.scale(std);
+					_source.x = p.x(td) - point.x;
+					_source.y = p.y(td) - point.y;
+					_source.smooth = smooth;
+
+					renderFunc();
+				}
 
 				// get next particle
 				p = p._next;
@@ -206,64 +191,18 @@ class Emitter extends Graphic
 		}
 	}
 
-	/** @private Renders the particles. */
 	override public function render(target:BitmapData, point:Point, camera:Point)
 	{
-		var rect:Rectangle;
-		renderParticle(function(type:ParticleType, t:Float, td:Float) {
-			rect = type._frame;
+		renderParticles(function() _source.render(target, point, camera), point, camera);
 
-			// get frame
-			if (type._frames.length == 0)
-				rect.x = 0;
-			else
-				rect.x = rect.width * type._frames[Std.int(td * type._frames.length)];
-			rect.y = Std.int(rect.x / _width) * rect.height;
-			rect.x %= _width;
-
-			// particles should be emited from the emiter's center
-			_p.x -= rect.width / 2;
-			_p.y -= rect.height / 2;
-
-			// draw particle
-			if (type._buffer != null)
-			{
-				// get alpha
-				_tint.alphaMultiplier = type._alpha + type._alphaRange * ((type._alphaEase == null) ? t : type._alphaEase(t));
-
-				// get color
-				td = (type._colorEase == null) ? t : type._colorEase(t);
-				_tint.redMultiplier = type._red + type._redRange * td;
-				_tint.greenMultiplier = type._green + type._greenRange * td;
-				_tint.blueMultiplier  = type._blue + type._blueRange * td;
-				type._buffer.fillRect(type._bufferRect, HXP.blackColor);
-				type._buffer.copyPixels(_source, rect, HXP.zero);
-				type._buffer.colorTransform(type._bufferRect, _tint);
-
-				// draw particle
-				target.copyPixels(type._buffer, type._bufferRect, _p, null, null, true);
-			}
-			else
-			{
-				target.copyPixels(_source, rect, _p, null, null, true);
-			}
-		}, point, camera);
+		super.render(target, point, camera);
 	}
 
 	override public function renderAtlas(layer:Int, point:Point, camera:Point)
 	{
-		var fsx:Float = HXP.screen.fullScaleX,
-			fsy:Float = HXP.screen.fullScaleY;
+		renderParticles(function() _source.renderAtlas(layer, point, camera), point, camera);
 
-		renderParticle(function(type:ParticleType, t:Float, td:Float) {
-			var frameIndex:Int = type._frames[Std.int(td * type._frames.length)];
-			_frames[frameIndex].draw(Math.floor(_p.x * fsx), Math.floor(_p.y * fsy), layer,
-				fsx, fsy, type._angle,
-				type._red + type._redRange * td,
-				type._green + type._greenRange * td,
-				type._blue + type._blueRange * td,
-				type._alpha + type._alphaRange * ((type._alphaEase == null) ? t : type._alphaEase(t)));
-		}, point, camera);
+		super.renderAtlas(layer, point, camera);
 	}
 
 	/**
@@ -298,7 +237,7 @@ class Emitter extends Graphic
 	 * @param	backwards		If the motion should be played backwards.
 	 * @return	This ParticleType object.
 	 */
-	public function setMotion(name:String, angle:Float, distance:Float, duration:Float, ?angleRange:Float = 0, ?distanceRange:Float = 0, ?durationRange:Float = 0, ?ease:EaseFunction = null, ?backwards:Bool = false):ParticleType
+	public function setMotion(name:String, angle:Float, distance:Float, duration:Float, ?angleRange:Float = 0, ?distanceRange:Float = 0, ?durationRange:Float = 0, ?ease:EaseFunction, ?backwards:Bool = false):ParticleType
 	{
 		var pt:ParticleType = _types.get(name);
 		if (pt == null) return null;
@@ -314,7 +253,7 @@ class Emitter extends Graphic
 	 */
 	public function setGravity(name:String, ?gravity:Float = 0, ?gravityRange:Float = 0):ParticleType
 	{
-		return cast(_types.get(name) , ParticleType).setGravity(gravity, gravityRange);
+		return _types.get(name).setGravity(gravity, gravityRange);
 	}
 
 	/**
@@ -325,11 +264,61 @@ class Emitter extends Graphic
 	 * @param	ease		Optional easer function.
 	 * @return	This ParticleType object.
 	 */
-	public function setAlpha(name:String, ?start:Float = 1, ?finish:Float = 0, ?ease:EaseFunction = null):ParticleType
+	public function setAlpha(name:String, ?start:Float = 1, ?finish:Float = 0, ?ease:EaseFunction):ParticleType
 	{
 		var pt:ParticleType = _types.get(name);
 		if (pt == null) return null;
 		return pt.setAlpha(start, finish, ease);
+	}
+
+	/**
+	 * Sets the scale range of the particle type.
+	 * @param	name		The particle type.
+	 * @param	start		The starting scale.
+	 * @param	finish		The finish scale.
+	 * @param	ease		Optional easer function.
+	 * @return	This ParticleType object.
+	 * @since	2.6.0
+	 */
+	public function setScale(name:String, ?start:Float = 1, ?finish:Float = 0, ?ease:EaseFunction):ParticleType
+	{
+		var pt:ParticleType = _types.get(name);
+		if (pt == null) return null;
+		return pt.setScale(start, finish, ease);
+	}
+
+	/**
+	 * Defines the rotation range for a particle type.
+	 * @param	name	The particle type.
+	 * @param	startAngle	Starting angle.
+	 * @param	spanAngle	Total amount of degrees to rotate.
+	 * @param	startAngleRange	Random amount to add to the particle's starting angle.
+	 * @param	spanAngleRange	Random amount to add to the particle's span angle.
+	 * @param	ease	Optional easer function.
+	 * @since	2.6.0
+	 * @return	This ParticleType object.
+	 */
+	public function setRotation(name:String, startAngle:Float, spanAngle:Float, startAngleRange:Float = 0, spanAngleRange:Float = 0, ease:EaseFunction = null):ParticleType
+	{
+		var pt:ParticleType = _types.get(name);
+		if (pt == null) return null;
+		return pt.setRotation(startAngle, spanAngle, startAngleRange, spanAngleRange, ease);
+	}
+
+	/**
+	 * Sets the trail of the particle type.
+	 * @param	name		The particle type.
+	 * @param	length		Number of trailing particles to draw.
+	 * @param	delay		Time to delay each trailing particle, in seconds.
+	 * @param	alpha		Multiply each successive trail particle's alpha by this amount.
+	 * @since	2.6.0
+	 * @return	This ParticleType object.
+	 */
+	public function setTrail(name:String, length:Int = 1, delay:Float = 0.1, alpha:Float=1):ParticleType
+	{
+		var pt:ParticleType = _types.get(name);
+		if (pt == null) return null;
+		return pt.setTrail(length, delay, alpha);
 	}
 
 	/**
@@ -340,7 +329,7 @@ class Emitter extends Graphic
 	 * @param	ease		Optional easer function.
 	 * @return	This ParticleType object.
 	 */
-	public function setColor(name:String, ?start:Int = 0xFFFFFF, ?finish:Int = 0, ?ease:EaseFunction = null):ParticleType
+	public function setColor(name:String, ?start:Int = 0xFFFFFF, ?finish:Int = 0, ?ease:EaseFunction):ParticleType
 	{
 		var pt:ParticleType = _types.get(name);
 		if (pt == null) return null;
@@ -352,9 +341,10 @@ class Emitter extends Graphic
 	 * @param	name		Particle type to emit.
 	 * @param	x			X point to emit from.
 	 * @param	y			Y point to emit from.
+	 * @param	angle		Base angle to start from.
 	 * @return	The Particle emited.
 	 */
-	public function emit(name:String, ?x:Float = 0, ?y:Float = 0):Particle
+	public function emit(name:String, ?x:Float = 0, ?y:Float = 0, ?angle:Float = 0):Particle
 	{
 		var p:Particle, type:ParticleType = _types.get(name);
 
@@ -376,15 +366,20 @@ class Emitter extends Graphic
 
 		p._type = type;
 		p._time = 0;
-		p._duration = type._duration + type._durationRange * HXP.random;
-		var a:Float = type._angle + type._angleRange * HXP.random,
-			d:Float = type._distance + type._distanceRange * HXP.random;
-		p._moveX = Math.cos(a) * d;
-		p._moveY = Math.sin(a) * d;
+		p._duration = type._duration + type._durationRange * Math.random();
+		p._stopTime = p._duration;
+		p._angle = angle + type._angle + type._angleRange * Math.random();
+		p._startAngle = type._startAngle + type._startAngleRange * Math.random();
+		p._spanAngle = type._spanAngle + type._spanAngleRange * Math.random();
+		var d:Float = type._distance + type._distanceRange * Math.random();
+		p._moveX = Math.cos(p._angle * HXP.RAD) * d;
+		p._moveY = Math.sin(p._angle * HXP.RAD) * d;
 		p._x = x;
 		p._y = y;
-		p._gravity = type._gravity + type._gravityRange * HXP.random;
-		particleCount ++;
+		p._gravity = type._gravity + type._gravityRange * Math.random();
+		p._firstDraw = true;
+		p._ox = p._oy = 0;
+		particleCount++;
 		return (_particle = p);
 	}
 
@@ -414,9 +409,9 @@ class Emitter extends Graphic
 	 *
 	 * @return The Particle emited.
 	 */
-	public function emitInRectangle(name:String, x:Float, y:Float, width:Float ,height:Float):Particle
+	public function emitInRectangle(name:String, x:Float, y:Float, width:Float, height:Float):Particle
 	{
-		return emit(name, x + HXP.random * width, y + HXP.random * height);
+		return emit(name, x + Math.random() * width, y + Math.random() * height);
 	}
 
 	/**
@@ -424,13 +419,17 @@ class Emitter extends Graphic
 	 */
 	public var particleCount(default, null):Int;
 
+	public var scale:Float = 1;
+	public var smooth:Bool = true;
+
 	// Particle information.
-	private var _types:Map<String,ParticleType>;
+	private var _types:Map<String, ParticleType>;
 	private var _particle:Particle;
 	private var _cache:Particle;
 
 	// Source information.
-	private var _source:BitmapData;
+	private var _source:Image;
+	private var _animated:Bool = false;
 	private var _width:Int;
 	private var _height:Int;
 	private var _frameWidth:Int;
@@ -439,8 +438,6 @@ class Emitter extends Graphic
 	private var _frames:Array<AtlasRegion>;
 
 	// Drawing information.
-	private var _p:Point;
-	private var _tint:ColorTransform;
-	private static var SIN(get,never):Float;
-	private static inline function get_SIN():Float { return Math.PI / 2; }
+	private static var SIN(get, never):Float;
+	private static inline function get_SIN():Float return Math.PI / 2; 
 }

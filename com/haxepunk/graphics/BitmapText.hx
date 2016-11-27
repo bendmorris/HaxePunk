@@ -2,38 +2,56 @@ package com.haxepunk.graphics;
 
 import flash.display.BitmapData;
 import flash.geom.Point;
-import flash.geom.Rectangle;
 import flash.geom.Matrix;
 import flash.geom.ColorTransform;
 import com.haxepunk.HXP;
 import com.haxepunk.RenderMode;
 import com.haxepunk.Graphic;
-import com.haxepunk.graphics.Canvas;
 import com.haxepunk.graphics.Text;
 import com.haxepunk.graphics.atlas.BitmapFontAtlas;
 import com.haxepunk.graphics.atlas.AtlasRegion;
 
-
+@:dox(hide)
 typedef RenderFunction = AtlasRegion -> GlyphData -> Float -> Float -> Void;
 
+/**
+ * Text option including the font, size, color, font format...
+ */
+typedef BitmapTextOptions =
+{
+	> TextOptions,
+	@:optional var format:BitmapFontFormat;
+	@:optional var extraParams:Dynamic;
+};
+
+/**
+ * An object for drawing text using a bitmap font.
+ * @since	2.5.0
+ */
 class BitmapText extends Graphic
 {
-	public var width:Float=0;
-	public var height:Float=0;
-	public var textWidth:Int=0;
-	public var textHeight:Int=0;
+	public var width:Float = 0;
+	public var height:Float = 0;
+	public var textWidth:Int = 0;
+	public var textHeight:Int = 0;
 	public var autoWidth:Bool = false;
-	public var autoHeight:Bool = false;
-	public var size:Int=0;
-	public var wrap:Bool=false;
 
-	public var scale:Float=1;
-	public var scaleX:Float=1;
-	public var scaleY:Float=1;
+	/**
+	 * Whether or not to automatically figure out the height 
+	 * and width of the text. 
+	 * @default False.
+	 */
+	public var autoHeight:Bool = false;
+	public var size:Int = 0;
+	public var wrap:Bool = false;
+
+	public var scale:Float = 1;
+	public var scaleX:Float = 1;
+	public var scaleY:Float = 1;
 
 	public var lines:Array<String>;
-	public var lineSpacing:Int=0;
-	public var charSpacing:Int=0;
+	public var lineSpacing:Int = 0;
+	public var charSpacing:Int = 0;
 
 	/**
 	 * BitmapText constructor.
@@ -42,32 +60,31 @@ class BitmapText extends Graphic
 	 * @param y       Y offset.
 	 * @param width   Image width (leave as 0 to size to the starting text string).
 	 * @param height  Image height (leave as 0 to size to the starting text string).
-	 * @param options An object containing optional parameters contained in TextOptions
-	 * 						font		Path to .fnt file.
+	 * @param options An object containing optional parameters contained in BitmapTextOptions
+	 * 						font		Name of the font asset (.fnt or .png).
 	 * 						size		Font size.
-	 * 						align		Alignment ("left", "center" or "right"). (Currently ignored.)
+	 * 						format		Font format (BitmapFontFormat.XML or BitmapFontFormat.XNA).
 	 * 						wordWrap	Automatic word wrapping.
-	 * 						resizable	If the text field can automatically resize if its contents grow. (Currently ignored.)
 	 * 						color		Text color.
-	 * 						leading		Vertical space between lines.
-	 *						richText	If the text field uses a rich text string
+	 * 						align		Alignment ("left", "center" or "right"). (Currently ignored.)
+	 * 						resizable	If the text field can automatically resize if its contents grow. (Currently ignored.)
+	 * 						leading		Vertical space between lines. (Currently ignored.)
+	 *						richText	If the text field uses a rich text string. (Currently ignored.) 
 	 */
-	public function new(text:String, x:Float=0, y:Float=0, width:Float=0, height:Float=0, ?options:TextOptions)
+	public function new(text:String, x:Float = 0, y:Float = 0, width:Float = 0, height:Float = 0, ?options:BitmapTextOptions)
 	{
 		super();
 
-		if (options == null)
-		{
-			options = {};
-			options.color = 0xFFFFFF;
-		}
-		wrap = options.wordWrap;
+		if (options == null) options = {};
 
-		if (options.font == null)  options.font = HXP.defaultFont;
-		if (options.size == 0)     options.size = 16;
+		// defaults
+		if (!Reflect.hasField(options, "font"))      options.font      = HXP.defaultFont + ".png";
+		if (!Reflect.hasField(options, "size"))      options.size      = null;
+		if (!Reflect.hasField(options, "color"))     options.color     = 0xFFFFFF;
+		if (!Reflect.hasField(options, "wordWrap"))  options.wordWrap  = false;
 
-		// load the font as a TextureAtlas
-		var font = BitmapFontAtlas.getFont(options.font);
+		// load the font as a BitmapFontAtlas
+		var font = BitmapFontAtlas.getFont(options.font, options.format, options.extraParams);
 
 		blit = HXP.renderMode != RenderMode.HARDWARE;
 		_font = cast(font, BitmapFontAtlas);
@@ -75,12 +92,13 @@ class BitmapText extends Graphic
 		// failure to load
 		if (_font == null)
 			throw "Invalid font glyphs provided.";
-
+		
 		this.x = x;
 		this.y = y;
 		this.width = width;
 		this.height = height;
-		this.size = options.size;
+		wrap = options.wordWrap;
+		size = options.size != null ? options.size : _font.fontSize;
 
 		autoWidth = (width == 0);
 		autoHeight = (height == 0);
@@ -94,7 +112,9 @@ class BitmapText extends Graphic
 
 		this.color = options.color;
 		updateColor();
-		this.text = text;
+		this.text = text != null ? text : "";
+
+		smooth = (HXP.stage.quality != LOW);
 	}
 
 	private var _red:Float;
@@ -112,7 +132,7 @@ class BitmapText extends Graphic
 		return value;
 	}
 
-	public var alpha(default,set):Float=1;
+	public var alpha(default, set):Float=1;
 	private function set_alpha(value:Float)
 	{
 		alpha = value;
@@ -134,7 +154,9 @@ class BitmapText extends Graphic
 
 		if (blit)
 		{
-			_colorTransform.color = color;
+			_colorTransform.redMultiplier = _red;
+			_colorTransform.greenMultiplier = _green;
+			_colorTransform.blueMultiplier = _blue;
 			_colorTransform.alphaMultiplier = alpha;
 		}
 	}
@@ -160,7 +182,7 @@ class BitmapText extends Graphic
 		return text;
 	}
 
-	/*
+	/**
 	 * Automatically wraps text by figuring out how many words can fit on a
 	 * single line, and splitting the remainder onto a new line.
 	 */
@@ -181,15 +203,13 @@ class BitmapText extends Graphic
 			for (n in 0 ... line.length)
 			{
 				var char:String = line.charAt(n);
-				switch(char)
+				switch (char)
 				{
-					case ' ', '-': {
+					case ' ', '-':
 						words.push(thisWord + char);
 						thisWord = "";
-					}
-					default: {
+					default:
 						thisWord += char;
-					}
 				}
 			}
 			if (thisWord != "") words.push(thisWord);
@@ -210,7 +230,7 @@ class BitmapText extends Graphic
 					// if the word ends in a space, don't count that last space
 					// toward the line length for determining overflow
 					var endsInSpace = word.charAt(word.length - 1) == ' ';
-					if ((lineWidth - (endsInSpace ? spaceWidth : 0)) * sx > width)
+					if ((lineWidth - (endsInSpace ? spaceWidth : 0)) > width / sx)
 					{
 						// line is too long; split it before this word
 						subLines.push(words.slice(lastBreak, w).join(''));
@@ -235,7 +255,7 @@ class BitmapText extends Graphic
 		lines = newLines;
 	}
 
-	/*
+	/**
 	 * Run through the render loop without actually drawing anything. This
 	 * will compute the textWidth and textHeight attributes.
 	 */
@@ -244,7 +264,7 @@ class BitmapText extends Graphic
 		renderFont();
 	}
 
-	/*
+	/**
 	 * Update the drawing buffer on software rendering mode. For efficiency, if
 	 * any lines were unchanged from previously rendered text, they will not be
 	 * re-drawn.
@@ -268,69 +288,47 @@ class BitmapText extends Graphic
 		if (autoWidth || autoHeight)
 		{
 			computeTextSize();
-			w = Std.int(autoWidth ? (textWidth/sx) : width);
-			h = Std.int(autoHeight ? (textHeight/sy) : height);
+			w = Std.int(autoWidth ? (textWidth / sx) : (width / sx));
+			h = Std.int(autoHeight ? (textHeight / sy) : (height / sy));
 		}
 		else
 		{
-			w = Std.int(width);
-			h = Std.int(height);
+			w = Std.int(width / sx);
+			h = Std.int(height / sy);
 		}
 		w = Std.int(w);
-		h = Std.int(h+_font.lineHeight+lineSpacing);
-
-		// if any of the previous lines of text are the same as the new lines,
-		// don't re-render those lines
-		var startLine = 0;
-		if (oldLines != null)
-		{
-			for (n in 0 ... Std.int(Math.min(oldLines.length, lines.length)))
-			{
-				if (lines[n] == oldLines[n])
-				{
-					startLine += 1;
-				}
-				else
-				{
-					break;
-				}
-			}
-		}
+		h = Std.int(h + _font.lineHeight + lineSpacing);
 
 		// create or clear the buffer if necessary
 		if (_buffer == null || _buffer.width != w || _buffer.height != h)
 		{
 			if (_buffer != null) _buffer.dispose();
 			_buffer = HXP.createBitmap(w, h, true, 0);
-			startLine = 0;
 		}
 		else
 		{
-			if (startLine > 0) startLine -= 1;
-			var r = _buffer.rect;
-			r.top = startLine * (_font.lineHeight + lineSpacing);
-			_buffer.fillRect(r, HXP.blackColor);
+			_buffer.fillRect(_buffer.rect, HXP.blackColor);
 		}
 
 		// make a pass through each character, copying it onto the buffer
-		renderFont(function(region:AtlasRegion,gd:GlyphData,x:Float,y:Float) {
+		renderFont(function(region:AtlasRegion, gd:GlyphData, x:Float, y:Float)
+		{
 			_point.x = x;
 			_point.y = y;
 
 			_buffer.copyPixels(_set, gd.rect, _point, null, null, true);
-		}, startLine);
+		});
 	}
 
 	/*
 	 * Loops through the text, drawing each character on each line.
 	 * @param renderFunction    Function to render each character.
-	 * @param startLine         Line number to start rendering on.
 	 */
-	private inline function renderFont(?renderFunction:RenderFunction, startLine=0)
+	private inline function renderFont(?renderFunction:RenderFunction)
 	{
 		// loop through the text one character at a time, calling the supplied
 		// rendering function for each character
-		var fontScale = size/_font.fontSize;
+		var fontScale = size / _font.fontSize;
 
 		var lineHeight:Int = Std.int(_font.lineHeight + lineSpacing);
 
@@ -353,7 +351,7 @@ class BitmapText extends Graphic
 					gd = _font.glyphData.get(' ');
 				}
 
-				if (letter==' ')
+				if (letter == ' ')
 				{
 					// it's a space, just move the cursor
 					rx += Std.int(gd.xAdvance);
@@ -361,8 +359,7 @@ class BitmapText extends Graphic
 				else
 				{
 					// draw the character
-					if (renderFunction != null &&
-					    y >= startLine)
+					if (renderFunction != null)
 					{
 						renderFunction(region, gd,
 						               (rx + gd.xOffset),
@@ -370,25 +367,26 @@ class BitmapText extends Graphic
 					}
 					// advance cursor position
 					rx += Std.int((gd.xAdvance + charSpacing));
-					if (width != 0 && rx > width)
+					if (width != 0 && rx > width / sx)
 					{
-						textWidth = Std.int(width * sx);
+						textWidth = Std.int(width);
 						rx = 0;
 						ry += lineHeight;
 					}
 				}
 
 				// longest line so far
-				if (Std.int(rx*sx) > textWidth) textWidth = Std.int(rx*sx);
+				if (Std.int(rx * sx) > textWidth) textWidth = Std.int(rx * sx);
 			}
 
 			// next line
 			rx = 0;
 			ry += lineHeight;
-			if (Std.int(ry) > textHeight) textHeight = Std.int(ry*sx);
+			if (Std.int(ry * sy) > textHeight) textHeight = Std.int(ry * sy);
 		}
 	}
 
+	@:dox(hide)
 	override public function render(target:BitmapData, point:Point, camera:Point)
 	{
 		// determine drawing location
@@ -406,10 +404,11 @@ class BitmapText extends Graphic
 		_matrix.d = sy;
 		_matrix.tx = _point.x;
 		_matrix.ty = _point.y;
-		target.draw(_buffer, _matrix, _colorTransform);
+		target.draw(_buffer, _matrix, _colorTransform, null, null, smooth);
 		//target.copyPixels(_buffer, _buffer.rect, _point, null, null, true);
 	}
 
+	@:dox(hide)
 	override public function renderAtlas(layer:Int, point:Point, camera:Point)
 	{
 		// determine drawing location
@@ -425,10 +424,14 @@ class BitmapText extends Graphic
 		_point.y = Math.floor(point.y + y - camera.y * scrollY);
 
 		// use hardware accelerated rendering
-		renderFont(function(region:AtlasRegion,gd:GlyphData, x:Float,y:Float) {
-			region.draw(_point.x * fsx + x * sx, _point.y * fsy + y * sy, layer, sx, sy, 0, _red, _green, _blue, alpha);
+		renderFont(function(region:AtlasRegion, gd:GlyphData, x:Float, y:Float)
+		{
+			region.draw(_point.x * fsx + x * sx, _point.y * fsy + y * sy, layer, sx, sy, 0, _red, _green, _blue, alpha, smooth);
 		});
 	}
+
+	/** Default value: false if HXP.stage.quality is LOW, true otherwise. */
+	public var smooth:Bool;
 
 	private var _buffer:BitmapData;
 	private var _set:BitmapData;

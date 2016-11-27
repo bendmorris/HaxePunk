@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <project>
-	<app preloader="com.haxepunk.Preloader" />
+	<app preloader="com.haxepunk.Preloader" unless="noHaxepunkPreloader || html5"/>
+	<app swf-version="11.7" if="flash"/>
 
-	<assets path="assets/graphics" rename="gfx" include="*.png" />
-	<assets path="assets/font" rename="font" include="*.ttf" />
-	
-	<haxelib name="openfl-ouya" if="ouya" version="1.0.2" />
-	<section if="js">
-		<haxelib name="openfl-html5-dom" version="1.2.1" />
-		<haxelib name="openfl-bitfive" version="1.0.5" />
-	</section>
-	<haxelib name="openfl" version="1.2.3" />
+	<assets path="assets/graphics" rename="graphics" include="*.png" embed="true"/>
+	<assets path="assets/font" rename="font" include="*.ttf" embed="true"/>
+
+	<haxedef name="source-header" value="haxe"/>
+	<haxeflag name="--macro" value="com.haxepunk.utils.Platform.run()"/>
+	<set name="legacy" unless="next"/>
+	<set name="openfl-legacy" unless="next"/>
+
+	<haxelib name="openfl-ouya" if="ouya"/>
+	<haxelib name="openfl"/>
 </project>

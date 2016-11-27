@@ -1,7 +1,5 @@
 package com.haxepunk;
 
-import flash.display.Bitmap;
-import flash.display.BitmapData;
 import flash.display.Sprite;
 import flash.display.StageAlign;
 import flash.display.StageDisplayState;
@@ -10,15 +8,15 @@ import flash.display.StageScaleMode;
 import flash.events.Event;
 import flash.geom.Rectangle;
 import flash.Lib;
-import haxe.EnumFlags;
 import haxe.Timer;
-import com.haxepunk.graphics.atlas.AtlasData;
 import com.haxepunk.utils.Draw;
 import com.haxepunk.utils.Input;
-import com.haxepunk.Tweener;
 
 /**
- * Main game Sprite class, added to the Flash Stage. Manages the game loop.
+ * Main game Sprite class, added to the Flash Stage.
+ * Manages the game loop.
+ * 
+ * Your main class **needs** to extends this.
  */
 class Engine extends Sprite
 {
@@ -100,37 +98,39 @@ class Engine extends Sprite
 	/**
 	 * Override this, called after Engine has been added to the stage.
 	 */
-	public function init() { }
+	public function init() {}
 
 	/**
 	 * Override this, called when game gains focus
 	 */
-	public function focusGained() { }
+	public function focusGained() {}
 
 	/**
 	 * Override this, called when game loses focus
 	 */
-	public function focusLost() { }
+	public function focusLost() {}
 
 	/**
 	 * Updates the game, updating the Scene and Entities.
 	 */
 	public function update()
 	{
-		HXP.scene.updateLists();
-		if (!HXP.gotoIsNull()) checkScene();
+		_scene.updateLists();
+		checkScene();
 		if (HXP.tweener.active && HXP.tweener.hasTween) HXP.tweener.updateTweens();
-		if (HXP.scene.active)
+		if (_scene.active)
 		{
-			if (HXP.scene.hasTween) HXP.scene.updateTweens();
-			HXP.scene.update();
+			if (_scene.hasTween) _scene.updateTweens();
+			_scene.update();
 		}
-		HXP.scene.updateLists(false);
+		_scene.updateLists(false);
+		HXP.screen.update();
 	}
 
 	/**
 	 * Renders the game, rendering the Scene and Entities.
 	 */
+	@:dox(hide)
 	public function render()
 	{
 		if (HXP.screen.needsResize) HXP.resize(HXP.windowWidth, HXP.windowHeight);
@@ -147,7 +147,21 @@ class Engine extends Sprite
 		}
 		Draw.resetTarget();
 
-		if (HXP.scene.visible) HXP.scene.render();
+		if (_scenes.length > 0)
+		{
+			// find the last visible scene, falling through transparent scenes
+			var visibleScene:Int = _scenes.length - 1;
+			while (_scenes[visibleScene].transparent && visibleScene > 0)
+			{
+				--visibleScene;
+			}
+			// render all visible scenes back to front
+			while (visibleScene < _scenes.length)
+			{
+				var scene = _scenes[visibleScene++];
+				if (scene.visible) scene.render();
+			}
+		}
 
 		if (HXP.renderMode == RenderMode.BUFFER)
 		{
@@ -169,33 +183,34 @@ class Engine extends Sprite
 	{
 		HXP.stage.frameRate = HXP.assignedFrameRate;
 		HXP.stage.align = StageAlign.TOP_LEFT;
+#if !js
 		HXP.stage.quality = StageQuality.HIGH;
+#end
 		HXP.stage.scaleMode = StageScaleMode.NO_SCALE;
 		HXP.stage.displayState = StageDisplayState.NORMAL;
-		HXP.windowWidth = HXP.stage.stageWidth;
-		HXP.windowHeight = HXP.stage.stageHeight;
 
 		resize(); // call resize once to initialize the screen
 
 		// set resize event
-		HXP.stage.addEventListener(Event.RESIZE, function (e:Event) {
-			resize();
-		});
+		HXP.stage.addEventListener(Event.RESIZE, function (e:Event) resize());
 
-		HXP.stage.addEventListener(Event.ACTIVATE, function (e:Event) {
+		HXP.stage.addEventListener(Event.ACTIVATE, function (e:Event)
+		{
 			HXP.focused = true;
 			focusGained();
-			HXP.scene.focusGained();
+			_scene.focusGained();
 		});
 
-		HXP.stage.addEventListener(Event.DEACTIVATE, function (e:Event) {
+		HXP.stage.addEventListener(Event.DEACTIVATE, function (e:Event)
+		{
 			HXP.focused = false;
 			focusLost();
-			HXP.scene.focusLost();
+			_scene.focusLost();
 		});
 
-#if !(flash || html5)
-		flash.display.Stage.shouldRotateInterface = function(orientation:Int):Bool {
+#if (!(flash || html5) && openfl_legacy)
+		flash.display.Stage.shouldRotateInterface = function(orientation:Int):Bool
+		{
 			if (HXP.indexOf(HXP.orientations, orientation) == -1) return false;
 			var tmp = HXP.height;
 			HXP.height = HXP.width;
@@ -209,18 +224,22 @@ class Engine extends Sprite
 	/** @private Event handler for stage resize */
 	private function resize()
 	{
-		if (HXP.width == 0) HXP.width = HXP.stage.stageWidth;
-		if (HXP.height == 0) HXP.height = HXP.stage.stageHeight;
+		if (HXP.width == 0 || HXP.height == 0)
+		{
+			// set initial size
+			HXP.width = HXP.stage.stageWidth;
+			HXP.height = HXP.stage.stageHeight;
+			HXP.screen.scaleMode.setBaseSize();
+		}
 		// calculate scale from width/height values
-		HXP.windowWidth = HXP.stage.stageWidth;
-		HXP.windowHeight = HXP.stage.stageHeight;
-		HXP.screen.scaleX = HXP.stage.stageWidth / HXP.width;
-		HXP.screen.scaleY = HXP.stage.stageHeight / HXP.height;
 		HXP.resize(HXP.stage.stageWidth, HXP.stage.stageHeight);
+		_scrollRect.width = HXP.screen.width;
+		_scrollRect.height = HXP.screen.height;
+		scrollRect = _scrollRect;
 	}
 
 	/** @private Event handler for stage entry. */
-	private function onStage(e:Event = null)
+	private function onStage(?e:Event)
 	{
 		// remove event listener
 #if flash
@@ -238,7 +257,7 @@ class Engine extends Sprite
 		Input.enable();
 
 		// switch scenes
-		if (!HXP.gotoIsNull()) checkScene();
+		checkScene();
 
 		// game start
 		Draw.init();
@@ -369,24 +388,64 @@ class Engine extends Sprite
 	}
 
 	/** @private Switch scenes if they've changed. */
-	private function checkScene()
+	private inline function checkScene()
 	{
-		if (HXP.gotoIsNull()) return;
-
-		if (HXP.scene != null)
+		if (_scene != null && _scenes.length > 0 && _scenes[_scenes.length - 1] != _scene)
 		{
-			HXP.scene.end();
-			HXP.scene.updateLists();
-			if (HXP.scene.autoClear && HXP.scene.hasTween) HXP.scene.clearTweens();
-			if (contains(HXP.scene.sprite)) removeChild(HXP.scene.sprite);
-			HXP.swapScene();
-			addChild(HXP.scene.sprite);
-			HXP.camera = HXP.scene.camera;
-			HXP.scene.updateLists();
-			HXP.scene.begin();
-			HXP.scene.updateLists();
+			_scene.end();
+			_scene.updateLists();
+			if (_scene.autoClear && _scene.hasTween) _scene.clearTweens();
+			if (contains(_scene.sprite)) removeChild(_scene.sprite);
+
+			_scene = _scenes[_scenes.length - 1];
+
+			addChild(_scene.sprite);
+			HXP.camera = _scene.camera;
+			_scene.updateLists();
+			_scene.begin();
+			_scene.updateLists();
 		}
 	}
+
+	/**
+	 * Push a scene onto the stack. It will not become active until the next update.
+	 * @param value  The scene to push
+	 * @since	2.5.3
+	 */
+	public function pushScene(value:Scene):Void
+	{
+		_scenes.push(value);
+	}
+
+	/**
+	 * Pop a scene from the stack. The current scene will remain active until the next update.
+	 * @since	2.5.3
+	 */
+	public function popScene():Scene
+	{
+		return _scenes.pop();
+	}
+
+	/**
+	 * The currently active Scene object. When you set this, the Scene is flagged
+	 * to switch, but won't actually do so until the end of the current frame.
+	 */
+	public var scene(get, set):Scene;
+	private inline function get_scene():Scene return _scene;
+	private function set_scene(value:Scene):Scene
+	{
+		if (_scene == value) return value;
+		if (_scenes.length > 0)
+		{
+			_scenes.pop();
+		}
+		_scenes.push(value);
+		return _scene;
+	}
+
+	// Scene information.
+	private var _scene:Scene = new Scene();
+	private var _scenes:Array<Scene> = new Array<Scene>();
 
 	// Timing information.
 	private var _delta:Float;
@@ -407,4 +466,6 @@ class Engine extends Sprite
 	private var _frameLast:Float;
 	private var _frameListSum:Int;
 	private var _frameList:Array<Int>;
+
+	private var _scrollRect:Rectangle = new Rectangle();
 }

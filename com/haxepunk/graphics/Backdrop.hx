@@ -1,13 +1,10 @@
 package com.haxepunk.graphics;
 
-import com.haxepunk.Graphic;
-import com.haxepunk.graphics.atlas.Atlas;
-import com.haxepunk.graphics.atlas.AtlasRegion;
-import com.haxepunk.HXP;
-import com.haxepunk.RenderMode;
-
 import flash.display.BitmapData;
 import flash.geom.Point;
+import com.haxepunk.graphics.atlas.AtlasRegion;
+import com.haxepunk.HXP;
+import com.haxepunk.Graphic;
 
 /**
  * A background texture that can be repeated horizontally and vertically
@@ -20,28 +17,28 @@ class Backdrop extends Canvas
 	 * @param	source		Source texture.
 	 * @param	repeatX		Repeat horizontally.
 	 * @param	repeatY		Repeat vertically.
+	 * @param	screenScale	How many screens the backdrop must span (to use with screen scaling)
 	 */
-	public function new(source:Dynamic, repeatX:Bool = true, repeatY:Bool = true)
+	public function new(source:ImageType, repeatX:Bool = true, repeatY:Bool = true, screenScale:Float = 1.)
 	{
-		if (Std.is(source, AtlasRegion)) setAtlasRegion(source);
-		else
+		switch (source.type)
 		{
-			if (HXP.renderMode == RenderMode.HARDWARE)
-			{
-				setAtlasRegion(Atlas.loadImageAsRegion(source));
-			}
-			else
-			{
-				if (Std.is(source, BitmapData)) setBitmapSource(source);
-				else if (Std.is(source, Dynamic)) setBitmapSource(HXP.getBitmap(source));
-				if (_source == null && _region == null) setBitmapSource(HXP.createBitmap(HXP.width, HXP.height, true));
-			}
+			case Left(bitmap):
+				blit = true;
+				_source = bitmap;
+				_textWidth = _source.width;
+				_textHeight = _source.height;
+			case Right(region):
+				blit = false;
+				_region = region;
+				_textWidth = Std.int(region.width);
+				_textHeight = Std.int(region.height);
 		}
 
 		_repeatX = repeatX;
 		_repeatY = repeatY;
 
-		super(HXP.width * (repeatX ? 1 : 0) + _textWidth, HXP.height * (repeatY ? 1 : 0) + _textHeight);
+		super(Std.int(HXP.width * (repeatX ? 1 : 0) * screenScale) + _textWidth, Std.int(HXP.height * (repeatY ? 1 : 0) * screenScale) + _textHeight);
 
 		if (blit)
 		{
@@ -52,38 +49,26 @@ class Backdrop extends Canvas
 		}
 	}
 
-	private inline function setAtlasRegion(region:AtlasRegion)
-	{
-		blit = false;
-		_region = region;
-		_textWidth = Std.int(region.width);
-		_textHeight = Std.int(region.height);
-	}
-
-	private inline function setBitmapSource(bitmap:BitmapData)
-	{
-		blit = true;
-		_source = bitmap;
-		_textWidth = _source.width;
-		_textHeight = _source.height;
-	}
-
 	/** Renders the Backdrop. */
+	@:dox(hide)
 	override public function render(target:BitmapData, point:Point, camera:Point)
 	{
 		_point.x = point.x + x - camera.x * scrollX;
 		_point.y = point.y + y - camera.y * scrollY;
 
+		var sx = scale * scaleX * HXP.screen.fullScaleX,
+			sy = scale * scaleY * HXP.screen.fullScaleY;
+
 		if (_repeatX)
 		{
-			_point.x %= _textWidth;
-			if (_point.x > 0) _point.x -= _textWidth;
+			_point.x %= _textWidth * sx;
+			if (_point.x > 0) _point.x -= _textWidth * sx;
 		}
 
 		if (_repeatY)
 		{
-			_point.y %= _textHeight;
-			if (_point.y > 0) _point.y -= _textHeight;
+			_point.y %= _textHeight * sy;
+			if (_point.y > 0) _point.y -= _textHeight * sy;
 		}
 
 		_x = x; _y = y;
@@ -92,39 +77,45 @@ class Backdrop extends Canvas
 		x = _x; y = _y;
 	}
 
+	@:dox(hide)
 	override public function renderAtlas(layer:Int, point:Point, camera:Point)
 	{
 		_point.x = point.x + x - camera.x * scrollX;
 		_point.y = point.y + y - camera.y * scrollY;
 
-		if (_repeatX)
-		{
-			_point.x %= _textWidth;
-			if (_point.x > 0) _point.x -= _textWidth;
-		}
-
-		if (_repeatY)
-		{
-			_point.y %= _textHeight;
-			if (_point.y > 0) _point.y -= _textHeight;
-		}
-
 		var sx = scale * scaleX,
 			sy = scale * scaleY,
 			fsx = HXP.screen.fullScaleX,
-			fsy = HXP.screen.fullScaleY,
-			px:Int = Std.int(_point.x * fsx), py:Int = Std.int(_point.y * fsy);
+			fsy = HXP.screen.fullScaleY;
 
-		var y:Int = 0;
-		while (y < _height * sy * fsy)
+		var xi:Int = 1,
+			yi:Int = 1;
+		if (_repeatX)
 		{
-			var x:Int = 0;
-			while (x < _width * sx * fsx)
+			_point.x %= _textWidth * sx * fsx;
+			if (_point.x > 0) _point.x -= _textWidth * sx * fsx;
+			xi = Std.int(Math.ceil((HXP.screen.width - _point.x) / Std.int(_textWidth * sx * fsx)));
+		}
+		if (_repeatY)
+		{
+			_point.y %= _textHeight * sy * fsy;
+			if (_point.y > 0) _point.y -= _textHeight * sy * fsy;
+			yi = Std.int(Math.ceil((HXP.screen.width - _point.x) / Std.int(_textWidth * sx * fsx)));
+		}
+
+		var px:Int = Std.int(_point.x), py:Int = Std.int(_point.y);
+
+		for (y in 0 ... yi)
+		{
+			for (x in 0 ... xi)
 			{
-				_region.draw(px + x, py + y, layer, sx * fsx, sy * fsy, 0, _red, _green, _blue, _alpha);
-				x += Std.int(_textWidth * fsx);
+				_region.draw(
+					px + x * _textWidth * sx * fsx,
+					py + y * _textHeight * sy * fsy,
+					layer, sx * fsx, sy * fsy, 0,
+					_red, _green, _blue, _alpha
+				);
 			}
-			y += Std.int(_textHeight * fsy);
 		}
 	}
 

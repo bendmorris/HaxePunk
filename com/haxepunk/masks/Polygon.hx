@@ -3,9 +3,6 @@ package com.haxepunk.masks;
 import com.haxepunk.Entity;
 import com.haxepunk.HXP;
 import com.haxepunk.Mask;
-import com.haxepunk.masks.Circle;
-import com.haxepunk.masks.Grid;
-import com.haxepunk.masks.Hitbox;
 import com.haxepunk.math.Projection;
 import com.haxepunk.math.Vector;
 import flash.display.Graphics;
@@ -21,13 +18,22 @@ class Polygon extends Hitbox
 	 */
 	public var origin:Point;
 
+	// Polygon bounding box.
+	/** Left x bounding box position. */
+	public var minX(default, null):Int = 0;
+	/** Top y bounding box position. */
+	public var minY(default, null):Int = 0;
+	/** Right x bounding box position. */
+	public var maxX(default, null):Int = 0;
+	/** Bottom y bounding box position. */
+	public var maxY(default, null):Int = 0;
 
 	/**
 	 * Constructor.
 	 * @param	points		An array of coordinates that define the polygon (must have at least 3).
 	 * @param	origin	 	Pivot point for rotations.
 	 */
-	public function new(points:Array<Point>, ?origin:Point)
+	public function new(points:Array<Vector>, ?origin:Point)
 	{
 		super();
 		if (points.length < 3) throw "The polygon needs at least 3 sides.";
@@ -54,8 +60,8 @@ class Polygon extends Hitbox
 	override private function collideMask(other:Mask):Bool
 	{
 		var offset:Float,
-			offsetX:Float = parent.x + _x - other.parent.x,
-			offsetY:Float = parent.y + _y - other.parent.y;
+			offsetX:Float = _parent.x + _x - other._parent.x,
+			offsetY:Float = _parent.y + _y - other._parent.y;
 
 		// project on the vertical axis of the hitbox/mask
 		project(vertical, firstProj);
@@ -109,8 +115,8 @@ class Polygon extends Hitbox
 	override private function collideHitbox(hitbox:Hitbox):Bool
 	{
 		var offset:Float,
-			offsetX:Float = parent.x + _x - hitbox.parent.x,
-			offsetY:Float = parent.y + _y - hitbox.parent.y;
+			offsetX:Float = _parent.x + _x - hitbox._parent.x,
+			offsetY:Float = _parent.y + _y - hitbox._parent.y;
 
 		// project on the vertical axis of the hitbox
 		project(vertical, firstProj);
@@ -172,10 +178,10 @@ class Polygon extends Hitbox
 
 		_fakeEntity.width = tileW;
 		_fakeEntity.height = tileH;
-		_fakeEntity.x = parent.x;
-		_fakeEntity.y = parent.y;
-		_fakeEntity.originX = grid.parent.originX + grid._x;
-		_fakeEntity.originY = grid.parent.originY + grid._y;
+		_fakeEntity.x = _parent.x;
+		_fakeEntity.y = _parent.y;
+		_fakeEntity.originX = grid._parent.originX + grid._x;
+		_fakeEntity.originY = grid._parent.originY + grid._y;
 
 		_fakeTileHitbox._width = tileW;
 		_fakeTileHitbox._height = tileH;
@@ -185,8 +191,8 @@ class Polygon extends Hitbox
 		{
 			for (c in 0...grid.columns)
 			{
-				_fakeEntity.x = grid.parent.x + grid._x + c * tileW;
-				_fakeEntity.y = grid.parent.y + grid._y + r * tileH;
+				_fakeEntity.x = grid._parent.x + grid._x + c * tileW;
+				_fakeEntity.y = grid._parent.y + grid._y + r * tileH;
 				solidTile = grid.getTile(c, r);
 
 				if (solidTile && collideHitbox(_fakeTileHitbox)) return true;
@@ -201,12 +207,11 @@ class Polygon extends Hitbox
 	private function collideCircle(circle:Circle):Bool
 	{
 		var edgesCrossed:Int = 0;
-		var p1:Point, p2:Point;
+		var p1:Vector, p2:Vector;
 		var i:Int, j:Int;
 		var nPoints:Int = _points.length;
-		var offsetX:Float = parent.x + _x;
-		var offsetY:Float = parent.y + _y;
-
+		var offsetX:Float = _parent.x + _x;
+		var offsetY:Float = _parent.y + _y;
 
 		// check if circle center is inside the polygon
 		i = 0;
@@ -216,10 +221,10 @@ class Polygon extends Hitbox
 			p1 = _points[i];
 			p2 = _points[j];
 
-			var distFromCenter:Float = (p2.x - p1.x) * (circle._y + circle.parent.y - p1.y - offsetY) / (p2.y - p1.y) + p1.x + offsetX;
+			var distFromCenter:Float = (p2.x - p1.x) * (circle._y + circle._parent.y - p1.y - offsetY) / (p2.y - p1.y) + p1.x + offsetX;
 
-			if ((p1.y + offsetY > circle._y + circle.parent.y) != (p2.y + offsetY > circle._y + circle.parent.y)
-				&& (circle._x + circle.parent.x < distFromCenter))
+			if ((p1.y + offsetY > circle._y + circle._parent.y) != (p2.y + offsetY > circle._y + circle._parent.y)
+				&& (circle._x + circle._parent.x < distFromCenter))
 			{
 				edgesCrossed++;
 			}
@@ -231,8 +236,8 @@ class Polygon extends Hitbox
 
 		// check if minimum distance from circle center to each polygon side is less than radius
 		var radiusSqr:Float = circle.radius * circle.radius;
-		var cx:Float = circle._x + circle.parent.x;
-		var cy:Float = circle._y + circle.parent.y;
+		var cx:Float = circle._x + circle._parent.x;
+		var cy:Float = circle._y + circle._parent.y;
 		var minDistanceSqr:Float = 0;
 		var closestX:Float;
 		var closestY:Float;
@@ -284,8 +289,8 @@ class Polygon extends Hitbox
 	private function collidePolygon(other:Polygon):Bool
 	{
 		var offset:Float;
-		var offsetX:Float = parent.x + _x - other.parent.x;
-		var offsetY:Float = parent.y + _y - other.parent.y;
+		var offsetX:Float = _parent.x + _x - other._parent.x - other._x;
+		var offsetY:Float = _parent.y + _y - other._parent.y - other._y;
 
 		// project other on this polygon axes
 		// for a collision to be present all projections must overlap
@@ -328,9 +333,10 @@ class Polygon extends Hitbox
 	}
 
 	/** Projects this polygon points on axis and returns min and max values in projection object. */
+	@:dox(hide)
 	override public function project(axis:Vector, projection:Projection):Void
 	{
-		var p:Point = _points[0];
+		var p:Vector = _points[0];
 
 		var min:Float = axis.dot(p),
 			max:Float = min;
@@ -353,33 +359,31 @@ class Polygon extends Hitbox
 		projection.max = max;
 	}
 
+	@:dox(hide)
 	override public function debugDraw(graphics:Graphics, scaleX:Float, scaleY:Float):Void
 	{
-		if (parent != null)
+		var	offsetX:Float = _parent.x + _x - HXP.camera.x,
+			offsetY:Float = _parent.y + _y - HXP.camera.y;
+
+		graphics.beginFill(0x0000FF, .3);
+
+		graphics.moveTo((points[_points.length - 1].x + offsetX) * scaleX , (_points[_points.length - 1].y + offsetY) * scaleY);
+		for (i in 0..._points.length)
 		{
-			var	offsetX:Float = parent.x + _x - HXP.camera.x,
-				offsetY:Float = parent.y + _y - HXP.camera.y;
-
-			graphics.beginFill(0x0000FF, .3);
-
-			graphics.moveTo((points[_points.length - 1].x + offsetX) * scaleX , (_points[_points.length - 1].y + offsetY) * scaleY);
-			for (i in 0..._points.length)
-			{
-				graphics.lineTo((_points[i].x + offsetX) * scaleX, (_points[i].y + offsetY) * scaleY);
-			}
-
-			graphics.endFill();
-
-			// draw pivot
-			graphics.drawCircle((offsetX + origin.x) * scaleX, (offsetY + origin.y) * scaleY, 2);
+			graphics.lineTo((_points[i].x + offsetX) * scaleX, (_points[i].y + offsetY) * scaleY);
 		}
+
+		graphics.endFill();
+
+		// draw pivot
+		graphics.drawCircle((offsetX + origin.x) * scaleX, (offsetY + origin.y) * scaleY, 2);
 	}
 
 	/**
 	 * Rotation angle (in degrees) of the polygon (rotates around origin point).
 	 */
 	public var angle(get, set):Float;
-	private inline function get_angle():Float { return _angle; }
+	private inline function get_angle():Float return _angle; 
 	private function set_angle(value:Float):Float
 	{
 		if (value != _angle)
@@ -396,9 +400,9 @@ class Polygon extends Hitbox
 	 * If you need to set a point yourself instead of passing in a new Array<Point> you need to call update()
 	 * to make sure the axes update as well.
 	 */
-	public var points(get, set):Array<Point>;
-	private inline function get_points():Array<Point> { return _points; }
-	private function set_points(value:Array<Point>):Array<Point>
+	public var points(get, set):Array<Vector>;
+	private inline function get_points():Array<Vector> return _points; 
+	private function set_points(value:Array<Vector>):Array<Vector>
 	{
 		if (_points != value)
 		{
@@ -409,6 +413,7 @@ class Polygon extends Hitbox
 	}
 
 	/** Updates the parent's bounds for this mask. */
+	@:dox(hide)
 	override public function update():Void
 	{
 		project(horizontal, firstProj); // width
@@ -418,6 +423,11 @@ class Polygon extends Hitbox
 		var projY:Int = Math.round(secondProj.min);
 		_height = Math.round(secondProj.max - secondProj.min);
 
+		minX = _x + projX;
+		minY = _y + projY;
+		maxX = Math.round(minX + _width);
+		maxY = Math.round(minY + _height);
+
 		if (list != null)
 		{
 			// update parent list
@@ -425,12 +435,11 @@ class Polygon extends Hitbox
 		}
 		else if (parent != null)
 		{
-			parent.originX = -_x - projX;
-			parent.originY = -_y - projY;
-			parent.width = _width;
-			parent.height = _height;
+			_parent.originX = -_x - projX;
+			_parent.originY = -_y - projY;
+			_parent.width = _width;
+			_parent.height = _height;
 		}
-
 	}
 
 	/**
@@ -448,12 +457,12 @@ class Polygon extends Hitbox
 		var rotationAngle:Float = (Math.PI * 2) / sides;
 
 		// loop through and generate each point
-		var points:Array<Point> = new Array<Point>();
+		var points:Array<Vector> = new Array<Vector>();
 
 		for (i in 0...sides)
 		{
 			var tempAngle:Float = Math.PI + i * rotationAngle;
-			var p:Point = new Point();
+			var p:Vector = new Vector();
 			p.x = Math.cos(tempAngle) * radius + radius;
 			p.y = Math.sin(tempAngle) * radius + radius;
 			points.push(p);
@@ -475,12 +484,12 @@ class Polygon extends Hitbox
 	 */
 	public static function createFromArray(points:Array<Float>):Polygon
 	{
-		var p:Array<Point> = new Array<Point>();
+		var p:Array<Vector> = new Array<Vector>();
 
 		var i:Int = 0;
 		while (i < points.length)
 		{
-			p.push(new Point(points[i++], points[i++]));
+			p.push(new Vector(points[i++], points[i++]));
 		}
 		return new Polygon(p);
 	}
@@ -491,7 +500,7 @@ class Polygon extends Hitbox
 
 		angleDelta *= HXP.RAD;
 
-		var p:Point;
+		var p:Vector;
 
 		for (i in 0..._points.length)
 		{
@@ -518,7 +527,6 @@ class Polygon extends Hitbox
 	private function generateAxes():Void
 	{
 		_axes = new Array<Vector>();
-		_indicesToRemove = new Array<Int>();
 
 		var temp:Float;
 		var nPoints:Int = _points.length;
@@ -548,29 +556,27 @@ class Polygon extends Hitbox
 
 	private function removeDuplicateAxes():Void
 	{
-		var nAxes:Int = _axes.length;
-		HXP.clear(_indicesToRemove);
-
-		for (i in 0...nAxes)
+		var i = _axes.length - 1;
+		var j = i - 1;
+		while (i > 0)
 		{
-			for (j in 0...nAxes)
+			// if the first vector is equal or similar to the second vector,
+			// remove it from the list. (for example, [1, 1] and [-1, -1]
+			// represent the same axis)
+			if ((Math.abs(_axes[i].x - _axes[j].x) < EPSILON && Math.abs(_axes[i].y - _axes[j].y) < EPSILON)
+				|| (Math.abs(_axes[j].x + _axes[i].x) < EPSILON && Math.abs(_axes[i].y + _axes[j].y) < EPSILON))	// first axis inverted
 			{
-				if (i == j || Math.max(i, j) >= nAxes) continue;
+				_axes.splice(i, 1);
+				i--;
+			}
 
-				// if the first vector is equal or similar to the second vector,
-				// add it to the remove list. (for example, [1, 1] and [-1, -1]
-				// represent the same axis)
-				if ((_axes[i].x == _axes[j].x && _axes[i].y == _axes[j].y)
-					|| ( -_axes[i].x == _axes[j].x && -_axes[i].y == _axes[j].y))	// first axis inverted
-				{
-					_indicesToRemove.push(j);
-				}
+			j--;
+			if (j < 0)
+			{
+				i--;
+				j = i - 1;
 			}
 		}
-
-		// remove duplicate axes
-		var indexToRemove:Null<Int>;
-		while ((indexToRemove = _indicesToRemove.pop()) != null) _axes.splice(indexToRemove, 1);
 	}
 
 	private function updateAxes():Void
@@ -582,17 +588,19 @@ class Polygon extends Hitbox
 
 	// Hitbox information.
 	private var _angle:Float;
-	private var _points:Array<Point>;
+	private var _points:Array<Vector>;
 	private var _axes:Array<Vector>;
 
 	private var _fakeEntity:Entity;				// used for Grid and Pixelmask collision
 	private var _fakeTileHitbox:Hitbox;			// used for Grid collision
 
-	private var _indicesToRemove:Array<Int>;	// used in removeDuplicateAxes()
+	private static var EPSILON = 0.000000001;	// used for axes comparison in removeDuplicateAxes
 
 	private static var firstProj = new Projection();
 	private static var secondProj = new Projection();
 
+	@:dox(hide)
 	public static var vertical = new Vector(0, 1);
+	@:dox(hide)
 	public static var horizontal = new Vector(1, 0);
 }

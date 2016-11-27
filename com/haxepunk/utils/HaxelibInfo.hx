@@ -4,60 +4,27 @@ package com.haxepunk.utils;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.Json;
-import haxe.io.BytesOutput;
-import haxe.io.Eof;
-import sys.io.Process;
+import haxe.io.Path;
 #end
 
+@:dox(hide)
 class HaxelibInfoBuilder
 {
-	macro public static function build () : Array<Field>
+	macro public static function build():Array<Field>
 	{
-		// Get HaxePuk path
-		var output = "";
-
-		try
-		{
-			var process = new Process("haxelib", ["path", "HaxePunk"]);
-			var buffer = new BytesOutput();
-
-			var waiting = true;
-			while (waiting)
-			{
-				try
-				{
-					var current = process.stdout.readAll (1024);
-                    buffer.write(current);
-
-                    if (current.length == 0)
-						waiting = false;
-				}
-				catch (e:Eof)
-				{
-					waiting = false;
-				}
-			}
-
-			process.close();
-			output = buffer.getBytes().toString();
-		}
-		catch (e:Dynamic) { }
-
-		var lines = output.split("\n");
-		var result = "";
-
-		for (i in 1...lines.length)
-		{
-			if (StringTools.trim(lines[i]) == "-D HaxePunk")
-			{
-				result = StringTools.trim (lines[i - 1]);
-			}
-		}
+		var path = haxe.macro.Context.resolvePath("com/haxepunk/utils/HaxelibInfo.hx");
+		path = Path.normalize(Path.directory(path) + "/../../../haxelib.json");
 
 		// Read haxelib.json
-		var doc = try {
-			Json.parse(sys.io.File.read(result + "haxelib.json").readAll().toString());
-		} catch (e:Dynamic) { }
+		var doc:Dynamic = null;
+		try
+		{
+			doc = Json.parse(sys.io.File.read(path).readAll().toString());
+		}
+		catch (e:Dynamic)
+		{
+			trace(e);
+		}
 
 		// Construct fields
 		var fields:Array<Field> = Context.getBuildFields();
@@ -74,7 +41,7 @@ class HaxelibInfoBuilder
 					doc: null,
 					meta: [],
 					access: [Access.APublic, Access.AStatic, Access.AInline],
-					kind: FieldType.FVar(macro : String, macro $v{value}),
+					kind: FieldType.FVar(macro:String, macro $v{value}),
 					pos: Context.currentPos()
 				});
 			}
@@ -88,7 +55,7 @@ class HaxelibInfoBuilder
 						doc: null,
 						meta: [],
 						access: [Access.APublic, Access.AStatic],
-						kind: FieldType.FVar(macro : Array<String>, macro $v{value}),
+						kind: FieldType.FVar(macro:Array<String>, macro $v{value}),
 						pos: Context.currentPos()
 					});
 				}
@@ -100,7 +67,7 @@ class HaxelibInfoBuilder
 						doc: null,
 						meta: [],
 						access: [Access.APublic, Access.AStatic],
-						kind: FieldType.FVar(macro : Dynamic, macro $v{value}),
+						kind: FieldType.FVar(macro:Dynamic, macro $v{value}),
 						pos: Context.currentPos()
 					});
 				}
@@ -112,6 +79,7 @@ class HaxelibInfoBuilder
 }
 
 #if !macro @:build(com.haxepunk.utils.HaxelibInfoBuilder.build()) #end
-class HaxelibInfo
-{
-}
+/**
+ * Access HaxePunk's haxelib.json from your code.
+ */
+class HaxelibInfo {}

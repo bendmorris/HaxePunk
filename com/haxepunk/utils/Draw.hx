@@ -12,7 +12,6 @@ import com.haxepunk.Entity;
 import com.haxepunk.HXP;
 import com.haxepunk.Graphic;
 import com.haxepunk.graphics.Text;
-import com.haxepunk.graphics.atlas.AtlasData;
 
 /**
  * Static class with access to miscellanious drawing functions.
@@ -27,6 +26,7 @@ class Draw
 	 */
 	public static var blend:BlendMode;
 
+	@:dox(hide)
 	public static function init()
 	{
 		if (HXP.renderMode == RenderMode.HARDWARE)
@@ -94,8 +94,8 @@ class Draw
 
 			// get the drawing difference
 			var screen:BitmapData = _target,
-				X:Float = Math.abs(x2 - x1),
-				Y:Float = Math.abs(y2 - y1),
+				x:Float = Math.abs(x2 - x1),
+				y:Float = Math.abs(y2 - y1),
 				xx:Int,
 				yy:Int;
 
@@ -106,9 +106,9 @@ class Draw
 			y2 -= Std.int(_camera.y);
 
 			// draw a single pixel
-			if (X == 0)
+			if (x == 0)
 			{
-				if (Y == 0)
+				if (y == 0)
 				{
 					screen.setPixel32(x1, y1, color);
 					return;
@@ -124,7 +124,7 @@ class Draw
 				return;
 			}
 
-			if (Y == 0)
+			if (y == 0)
 			{
 				// draw a straight horizontal line
 				xx = x2 > x1 ? 1 : -1;
@@ -142,9 +142,9 @@ class Draw
 			var c:Float = 0,
 				slope:Float;
 
-			if (X > Y)
+			if (x > y)
 			{
-				slope = Y / X;
+				slope = y / x;
 				c = .5;
 				while (x1 != x2)
 				{
@@ -161,7 +161,7 @@ class Draw
 			}
 			else
 			{
-				slope = X / Y;
+				slope = x / y;
 				c = .5;
 				while (y1 != y2)
 				{
@@ -258,6 +258,7 @@ class Draw
 	 * @param	alpha		Alpha of the rectangle.
 	 * @param	fill		If the rectangle should be filled with the color (true) or just an outline (false).
 	 * @param	thick		How thick the outline should be (only applicable when fill = false).
+	 * @since	2.5.2
 	 */
 	public static function rectPlus(x:Float, y:Float, width:Float, height:Float, color:Int = 0xFFFFFF, alpha:Float = 1, fill:Bool = true, thick:Float = 1)
 	{
@@ -307,11 +308,11 @@ class Draw
 			{
 				if (f >= 0)
 				{
-					yy --;
+					yy--;
 					fy += 2;
 					f += fy;
 				}
-				xx ++;
+				xx++;
 				fx += 2;
 				f += fx;
 				_target.setPixel32(x + xx, y + yy, color);
@@ -467,7 +468,7 @@ class Draw
 	 * @param	x		X position.
 	 * @param	y		Y position.
 	 */
-	public static function graphic(g:Graphic, x:Int = 0, y:Int = 0)
+	public static function graphic(g:Graphic, x:Int = 0, y:Int = 0, layer: Int = 0)
 	{
 		if (g.visible)
 		{
@@ -479,7 +480,14 @@ class Draw
 			else HXP.point.x = HXP.point.y = 0;
 			HXP.point2.x = HXP.camera.x;
 			HXP.point2.y = HXP.camera.y;
-			g.render(_target, HXP.point, HXP.point2);
+			if (HXP.renderMode == RenderMode.BUFFER) 
+			{
+				g.render(_target, HXP.point, HXP.point2);	
+			} 
+			else 
+			{
+				g.renderAtlas(layer, HXP.point, HXP.point2);
+			}
 		}
 	}
 
@@ -506,7 +514,7 @@ class Draw
 	 * @param  y       Y position.
 	 * @param  options Options (see Text constructor).
 	 */
-	public static function text(text:String, ?x:Float = 0, ?y:Float = 0, ?options:TextOptions = null)
+	public static function text(text:String, ?x:Float = 0, ?y:Float = 0, ?options:TextOptions)
 	{
 		var textGfx:Text = new Text(text, x, y, 0, 0, options);
 		textGfx.render(_target, HXP.zero, _camera);

@@ -1,14 +1,9 @@
 package com.haxepunk.graphics;
 
-import com.haxepunk.HXP;
-import com.haxepunk.graphics.atlas.TileAtlas;
-
-import flash.display.BitmapData;
-import flash.display.SpreadMethod;
-import flash.geom.Point;
 import flash.geom.Rectangle;
-
-typedef CallbackFunction = Void -> Void;
+import com.haxepunk.HXP;
+import com.haxepunk.Graphic;
+import com.haxepunk.graphics.atlas.TileAtlas;
 
 /**
  * Performance-optimized animated Image. Can have multiple animations,
@@ -24,7 +19,8 @@ class Spritemap extends Image
 	/**
 	 * Optional callback function for animation end.
 	 */
-	public var callbackFunc:CallbackFunction;
+	@:dox(hide) // mistaken for a class function
+	public var callbackFunc:Void -> Void;
 
 	/**
 	 * Animation speed factor, alter this to speed up/slow down all animations.
@@ -37,30 +33,30 @@ class Spritemap extends Image
 	 * @param	frameWidth		Frame width.
 	 * @param	frameHeight		Frame height.
 	 * @param	cbFunc			Optional callback function for animation end.
-	 * @param	name			Optional name, necessary to identify the bitmapData if you are using flipped.
 	 */
-	public function new(source:Dynamic, frameWidth:Int = 0, frameHeight:Int = 0, cbFunc:CallbackFunction = null, name:String = "")
+	public function new(source:TileType, frameWidth:Int = 0, frameHeight:Int = 0, ?cbFunc:Void -> Void)
 	{
 		complete = true;
 		rate = 1;
-		_anims = new Map<String,Animation>();
+		_anims = new Map<String, Animation>();
 		_timer = _frame = 0;
 
 		_rect = new Rectangle(0, 0, frameWidth, frameHeight);
-		if (Std.is(source, TileAtlas))
+		switch (source.type)
 		{
-			blit = false;
-			_atlas = cast(source, TileAtlas);
-			_region = _atlas.getRegion(_frame);
-		}
-		else if (HXP.renderMode == RenderMode.HARDWARE)
-		{
-			blit = false;
-			_atlas = new TileAtlas(source, frameWidth, frameHeight);
-			_region = _atlas.getRegion(_frame);
-		}
+			case Left(bd):
+				super(bd, _rect);
+			case Right(atlas):
+				_atlas = atlas;
 
-		super(source, _rect, name);
+				if (frameWidth > _atlas.width || frameHeight > _atlas.height)
+				{
+					throw "Frame width and height can't be bigger than the source image dimension.";
+				}
+
+				_atlas.prepare(frameWidth == 0 ? Std.int(_atlas.width) : frameWidth, frameHeight == 0 ? Std.int(_atlas.height) : frameHeight);
+				super(atlas.getRegion(_frame), _rect);
+		}
 
 		if (blit)
 		{
@@ -90,6 +86,7 @@ class Spritemap extends Image
 	/**
 	 * Updates the spritemap's buffer.
 	 */
+	@:dox(hide)
 	override public function updateBuffer(clearBefore:Bool = false)
 	{
 		if (blit)
@@ -97,9 +94,8 @@ class Spritemap extends Image
 			// get position of the current frame
 			if (_width > 0 && _height > 0)
 			{
-				_rect.x = _rect.width * _frame;
-				_rect.y = Std.int(_rect.x / _width) * _rect.height;
-				_rect.x = _rect.x % _width;
+				_rect.x = _rect.width * (_frame % _columns);
+				_rect.y = _rect.height * Std.int(_frame / _columns);
 				if (_flipped) _rect.x = (_width - _rect.width) - _rect.x;
 			}
 
@@ -113,6 +109,7 @@ class Spritemap extends Image
 	}
 
 	/** @private Updates the animation. */
+	@:dox(hide)
 	override public function update()
 	{
 		if (_anim != null && !complete)
@@ -122,18 +119,19 @@ class Spritemap extends Image
 			{
 				while (_timer >= 1)
 				{
-					_timer --;
-					_index ++;
-					if (_index == _anim.frameCount)
+					_timer--;
+					_index += reverse ? -1 : 1;
+					
+					if ((reverse && _index == -1) || (!reverse && _index == _anim.frameCount))
 					{
 						if (_anim.loop)
 						{
-							_index = 0;
+							_index = reverse ? _anim.frameCount - 1 : 0;
 							if (callbackFunc != null) callbackFunc();
 						}
 						else
 						{
-							_index = _anim.frameCount - 1;
+							_index = reverse ? 0 : _anim.frameCount - 1;
 							complete = true;
 							if (callbackFunc != null) callbackFunc();
 							break;
@@ -159,9 +157,6 @@ class Spritemap extends Image
 		if (_anims.get(name) != null)
 			throw "Cannot have multiple animations with the same name";
 
-		if(frameRate == 0)
-			frameRate = HXP.assignedFrameRate;
-
 		for (i in 0...frames.length)
 		{
 			frames[i] %= _frameCount;
@@ -174,29 +169,100 @@ class Spritemap extends Image
 	}
 
 	/**
-	 * Plays an animation.
+	 * Plays an animation previous defined by add().
 	 * @param	name		Name of the animation to play.
 	 * @param	reset		If the animation should force-restart if it is already playing.
+	 * @param	reverse		If the animation should be played backward.
 	 * @return	Anim object representing the played animation.
 	 */
-	public function play(name:String = "", reset:Bool = false):Animation
+	public function play(name:String = "", reset:Bool = false, reverse:Bool = false):Animation
 	{
-		if (!reset && _anim != null && _anim.name == name) return _anim;
-		if (_anims.exists(name))
+		if (!reset && _anim != null && _anim.name == name)
 		{
-			_anim = _anims.get(name);
-			_timer = _index = 0;
-			_frame = _anim.frames[0];
-			complete = false;
+			return _anim;
 		}
-		else
+		
+		if (!_anims.exists(name))
 		{
-			_anim = null;
-			_frame = _index = 0;
-			complete = true;
+			stop(reset);
+			return null;
 		}
-		updateBuffer();
+
+		_anim = _anims.get(name);
+		this.reverse = reverse;
+		restart();
+		
 		return _anim;
+	}
+
+	/**
+	 * Plays a new ad hoc animation.
+	 * @param	frames		Array of frame indices to animate through.
+	 * @param	frameRate	Animation speed (in frames per second, 0 defaults to assigned frame rate)
+	 * @param	loop		If the animation should loop
+	 * @param	reset		When the supplied frames are currently playing, should the animation be force-restarted
+	 * @param	reverse		If the animation should be played backward.
+	 * @return	Anim object representing the played animation.
+	 */
+	public function playFrames(frames:Array<Int>, frameRate:Float = 0, loop:Bool = true, reset:Bool = false, reverse:Bool = false):Animation
+	{
+		if (frames == null || frames.length == 0)
+		{
+			stop(reset);		
+			return null;
+		}
+
+		if (!reset && _anim != null && _anim.frames == frames)
+			return _anim;
+
+		return playAnimation(new Animation(null, frames, frameRate, loop), reset, reverse);
+	}
+
+	/**
+	 * Plays or restarts the supplied Animation.
+	 * @param	animation	The Animation object to play
+	 * @param	reset		When the supplied animation is currently playing, should it be force-restarted
+	 * @param	reverse		If the animation should be played backward.
+	 * @return	Anim object representing the played animation.
+	 */
+ 	public function playAnimation(anim:Animation, reset:Bool = false, reverse:Bool = false): Animation
+	{
+		if (anim == null)
+			throw "No animation supplied";
+			
+		if (!reset && _anim == anim)
+			return anim;
+
+		_anim = anim;
+		this.reverse = reverse;
+		restart();
+		
+		return anim;
+	}
+
+	/**
+	 * Resets the animation to play from the beginning.
+	 */
+	public function restart()
+	{
+		_timer = _index = reverse ? _anim.frames.length - 1 : 0;
+		_frame = _anim.frames[_index];
+		complete = false;
+		updateBuffer();
+	}
+
+	/**
+	 * Immediately stops the currently playing animation.
+	 * @param	reset		If true, resets the animation to the first frame.
+	 */
+	public function stop(reset:Bool = false)
+	{
+		if (reset)
+			_frame = _index = reverse ? _anim.frames.length - 1 : 0;
+		
+		_anim = null;
+		complete = true;
+		updateBuffer();
 	}
 
 	/**
@@ -251,7 +317,7 @@ class Spritemap extends Image
 	 * animations playing will be stopped to force the frame.
 	 */
 	public var frame(get, set):Int;
-	private function get_frame():Int { return _frame; }
+	private function get_frame():Int return _frame; 
 	private function set_frame(value:Int):Int
 	{
 		_anim = null;
@@ -267,7 +333,7 @@ class Spritemap extends Image
 	 * Current index of the playing animation.
 	 */
 	public var index(get, set):Int;
-	private function get_index():Int { return _anim != null ? _index : 0; }
+	private function get_index():Int return _anim != null ? _index : 0; 
 	private function set_index(value:Int):Int
 	{
 		if (_anim == null) return 0;
@@ -278,30 +344,35 @@ class Spritemap extends Image
 		updateBuffer();
 		return _index;
 	}
+	
+	/**
+	 * If the animation is played in reverse.
+	 */
+	public var reverse:Bool;
 
 	/**
 	 * The amount of frames in the Spritemap.
 	 */
 	public var frameCount(get, null):Int;
-	private function get_frameCount():Int { return _frameCount; }
+	private function get_frameCount():Int return _frameCount; 
 
 	/**
 	 * Columns in the Spritemap.
 	 */
 	public var columns(get, null):Int;
-	private function get_columns():Int { return _columns; }
+	private function get_columns():Int return _columns; 
 
 	/**
 	 * Rows in the Spritemap.
 	 */
 	public var rows(get, null):Int;
-	private function get_rows():Int { return _rows; }
+	private function get_rows():Int return _rows; 
 
 	/**
 	 * The currently playing animation.
 	 */
 	public var currentAnim(get, null):String;
-	private function get_currentAnim():String { return (_anim != null) ? _anim.name : ""; }
+	private function get_currentAnim():String return (_anim != null) ? _anim.name : ""; 
 
 	// Spritemap information.
 	private var _rect:Rectangle;
@@ -310,7 +381,7 @@ class Spritemap extends Image
 	private var _columns:Int;
 	private var _rows:Int;
 	private var _frameCount:Int;
-	private var _anims:Map<String,Animation>;
+	private var _anims:Map<String, Animation>;
 	private var _anim:Animation;
 	private var _index:Int;
 	private var _frame:Int;

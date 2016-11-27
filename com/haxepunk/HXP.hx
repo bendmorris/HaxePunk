@@ -1,8 +1,7 @@
 package com.haxepunk;
 
+import haxe.Timer;
 import flash.display.BitmapData;
-import flash.display.Bitmap;
-import flash.display.Graphics;
 import flash.display.Sprite;
 import flash.display.Stage;
 import flash.display.StageDisplayState;
@@ -13,21 +12,34 @@ import flash.geom.Rectangle;
 import flash.media.SoundMixer;
 #end
 import flash.media.SoundTransform;
-import flash.system.System;
-import flash.utils.ByteArray;
-import openfl.Assets;
-
-import com.haxepunk.Graphic;
-import com.haxepunk.Tween;
+import openfl.ui.Mouse;
+import com.haxepunk.Tween.TweenType;
 import com.haxepunk.debug.Console;
 import com.haxepunk.tweens.misc.Alarm;
 import com.haxepunk.tweens.misc.MultiVarTween;
-import com.haxepunk.utils.Ease;
+import com.haxepunk.utils.Cursor;
 import com.haxepunk.utils.HaxelibInfo;
 
-import haxe.CallStack;
-import haxe.EnumFlags;
-import haxe.Timer;
+/**
+ * Represents a position on a two dimensional coordinate system.
+ *
+ * Conversion from a `{ x:Float, y:Float }` or a `Entity` is automatic, no need to use this.
+ */
+abstract Position ({x:Float, y:Float})
+{
+	private function new(obj:Dynamic) this = obj;
+
+	public var x(get, set):Float;
+	private inline function get_x():Float return this.x;
+	private inline function set_x(value:Float):Float return this.x = value;
+
+	public var y(get, set):Float;
+	private inline function get_y():Float return this.y;
+	private inline function set_y(value:Float):Float return this.y = value;
+
+	@:dox(hide) @:from public static inline function fromObject(obj:{x:Float, y:Float}) return new Position(obj);
+	@:dox(hide) @:from public static inline function fromEntity(entity:Entity) return new Position(entity);
+}
 
 /**
  * Static catch-all class used to access global properties and functions.
@@ -38,17 +50,17 @@ class HXP
 	 * The HaxePunk version.
 	 * Format: Major.Minor.Patch
 	 */
-	public static inline var VERSION : String = HaxelibInfo.version;
+	public static inline var VERSION:String = HaxelibInfo.version;
 
 	/**
 	 * Flash equivalent: Number.MAX_VALUE
 	 */
 #if flash
-	public static var NUMBER_MAX_VALUE(get_NUMBER_MAX_VALUE,never): Float;
-	public static inline function get_NUMBER_MAX_VALUE(): Float { return untyped __global__["Number"].MAX_VALUE; }
+	public static var NUMBER_MAX_VALUE(get_NUMBER_MAX_VALUE, never):Float;
+	private static inline function get_NUMBER_MAX_VALUE():Float return untyped __global__["Number"].MAX_VALUE; 
 #else
-	public static var NUMBER_MAX_VALUE(get_NUMBER_MAX_VALUE,never): Float;
-	public static inline function get_NUMBER_MAX_VALUE(): Float { return 179 * Math.pow(10, 306); } // 1.79e+308
+	public static var NUMBER_MAX_VALUE(get_NUMBER_MAX_VALUE, never):Float;
+	private static inline function get_NUMBER_MAX_VALUE():Float return 179 * Math.pow(10, 306);  // 1.79e+308
 #end
 
 	/**
@@ -62,9 +74,9 @@ class HXP
 	public static inline var INT_MAX_VALUE = 2147483647;
 
 	/**
-	 * The color black (as an Int)
+	 * Deprecated, use 0 instead. The color black (as an Int).
 	 */
-	public static inline var blackColor = 0x00000000;
+	@:deprecated public static inline var blackColor:Int = 0x00000000;
 
 	/**
 	 * Width of the game.
@@ -118,6 +130,7 @@ class HXP
 
 	/**
 	 * The current screen buffer, drawn to in the render loop.
+	 * Only available for flash, html5 and buffer rendermode, null otherwise.
 	 */
 	public static var buffer:BitmapData;
 
@@ -127,13 +140,9 @@ class HXP
 	public static var bounds:Rectangle;
 
 	/**
-	 * The default font file to use
+	 * The default font file to use, by default: font/04B_03__.ttf.
 	 */
-#if openfl
 	public static var defaultFont:String = "font/04B_03__.ttf";
-#else
-	public static var defaultFont:String = "default";
-#end
 
 	/**
 	 * Point used to determine drawing offset in the render loop.
@@ -161,6 +170,20 @@ class HXP
 	public static var halfHeight(default, null):Float;
 
 	/**
+	 * Defines the allowed orientations
+	 */
+	public static var orientations:Array<Int> = [];
+
+	public static var cursor(default, set):Cursor;
+	private static inline function set_cursor(cursor:Cursor = null):Cursor
+	{
+		if (HXP.cursor == cursor) return cursor;
+		if (cursor == null) Mouse.show();
+		else Mouse.hide();
+		return HXP.cursor = cursor;
+	}
+
+	/**
 	 * Defines how to render the scene
 	 */
 	public static var renderMode(default, set):RenderMode;
@@ -170,7 +193,9 @@ class HXP
 
 		// recreate screen for buffer rendering
 		if (HXP.screen == null)
+		{
 			HXP.screen = new Screen();
+		}
 		else
 			HXP.screen.init();
 
@@ -178,47 +203,53 @@ class HXP
 	}
 
 	/**
-	 * Defines the allowed orientations
-	 */
-	public static var orientations:Array<Int> = [];
-
-	/**
 	 * The choose function randomly chooses and returns one of the provided values.
 	 */
 	public static var choose(get, null):Dynamic;
+	private static function get_choose():Dynamic
+	{
+		return Reflect.makeVarArgs(_choose);
+	}
+	private static inline function _choose(objs:Array<Dynamic>):Dynamic
+	{
+		if (objs == null || objs.length == 0)
+		{
+			throw "Can't choose a random element on an empty array";
+		}
+
+		if (Std.is(objs[0], Array)) // Passed an Array
+		{
+			var c:Array<Dynamic> = cast(objs[0], Array<Dynamic>);
+
+			if (c.length != 0)
+			{
+				return c[rand(c.length)];
+			}
+			else
+			{
+				throw "Can't choose a random element on an empty array";
+			}
+		}
+		else // Passed multiple args
+		{
+			return objs[rand(objs.length)];
+		}
+	}
 
 	/**
-	 * The currently active World object (deprecated)
+	 * The currently active World object (deprecated), use scene instead.
 	 */
 	@:deprecated public static var world(get, set):Scene;
-	private static inline function get_world():Scene { return _scene; }
-	private static inline function set_world(value:Scene):Scene { return set_scene(value); }
+	private static inline function get_world():Scene return get_scene(); 
+	private static inline function set_world(value:Scene):Scene return set_scene(value); 
 
 	/**
 	 * The currently active Scene object. When you set this, the Scene is flagged
 	 * to switch, but won't actually do so until the end of the current frame.
 	 */
 	public static var scene(get, set):Scene;
-	private static inline function get_scene():Scene { return _scene; }
-	private static function set_scene(value:Scene):Scene
-	{
-		if (_goto != null)
-		{
-			if (_goto == value) return value;
-		}
-		else
-		{
-			if (_scene == value) return value;
-		}
-		_goto = value;
-		return _scene;
-	}
-
-	public static inline function swapScene()
-	{
-		_scene = _goto;
-		_goto = null;
-	}
+	private static inline function get_scene():Scene return engine.scene; 
+	private static inline function set_scene(value:Scene):Scene return engine.scene = value; 
 
 	/**
 	 * Resize the screen.
@@ -228,15 +259,14 @@ class HXP
 	public static function resize(width:Int, height:Int)
 	{
 		// resize scene to scale
-		width = Std.int(width / HXP.screen.fullScaleX);
-		height = Std.int(height / HXP.screen.fullScaleY);
-		HXP.width = width;
-		HXP.height = height;
-		HXP.halfWidth = width / 2;
-		HXP.halfHeight = height / 2;
+		HXP.windowWidth = width;
+		HXP.windowHeight = height;
+		HXP.screen.resize(width, height);
+		HXP.halfWidth = HXP.width / 2;
+		HXP.halfHeight = HXP.height / 2;
 		HXP.bounds.width = width;
 		HXP.bounds.height = height;
-		HXP.screen.resize();
+		HXP.scene.resize();
 	}
 
 	/**
@@ -275,7 +305,7 @@ class HXP
 	 * Toggles between windowed and fullscreen modes
 	 */
 	public static var fullscreen(get, set):Bool;
-	private static inline function get_fullscreen():Bool { return HXP.stage.displayState == StageDisplayState.FULL_SCREEN; }
+	private static inline function get_fullscreen():Bool return HXP.stage.displayState == StageDisplayState.FULL_SCREEN; 
 	private static inline function set_fullscreen(value:Bool):Bool
 	{
 		if (value) HXP.stage.displayState = StageDisplayState.FULL_SCREEN;
@@ -287,64 +317,40 @@ class HXP
 	 * Global volume factor for all sounds, a value from 0 to 1.
 	 */
 	public static var volume(get, set):Float;
-	private static inline function get_volume():Float { return _volume; }
+	private static inline function get_volume():Float return _volume; 
 	private static function set_volume(value:Float):Float
 	{
 		if (value < 0) value = 0;
 		if (_volume == value) return value;
-		_soundTransform.volume = _volume = value;
+		_volume = value;
 		#if flash
+		_soundTransform.volume = value;
 		SoundMixer.soundTransform = _soundTransform;
+		#else
+		Sfx.onGlobalUpdated(false);
 		#end
 		return _volume;
 	}
 
 	/**
 	 * Global panning factor for all sounds, a value from -1 to 1.
+	 * Panning only applies to mono sounds. It is ignored on stereo.
 	 */
 	public static var pan(get, set):Float;
-	private static inline function get_pan():Float { return _pan; }
+	private static inline function get_pan():Float return _pan; 
 	private static function set_pan(value:Float):Float
 	{
 		if (value < -1) value = -1;
 		if (value > 1) value = 1;
 		if (_pan == value) return value;
-		_soundTransform.pan = _pan = value;
+		_pan = value;
 		#if flash
+		_soundTransform.pan = value;
 		SoundMixer.soundTransform = _soundTransform;
+		#else
+		Sfx.onGlobalUpdated(true);
 		#end
 		return _pan;
-	}
-
-	public static function get_choose():Dynamic
-    {
-        return Reflect.makeVarArgs(_choose);
-    }
-
-	private static inline function _choose(objs:Array<Dynamic>):Dynamic
-	{
-		if (objs == null || objs.length == 0)
-		{
-			throw "Can't choose a random element on an empty array";
-		}
-		
-		if (Std.is(objs[0], Array)) // Passed an Array
-		{		
-			var c:Array<Dynamic> = cast(objs[0], Array<Dynamic>);
-		
-			if (c.length != 0)
-			{
-				return c[rand(c.length)];
-			}
-			else
-			{
-				throw "Can't choose a random element on an empty array";
-			}
-		}
-		else // Passed multiple args
-		{
-			return objs[rand(objs.length)];
-		}		
 	}
 
 	/**
@@ -434,7 +440,7 @@ class HXP
 	 * @param	y			Y position to step towards.
 	 * @param	distance	The distance to step (will not overshoot target).
 	 */
-	public static function stepTowards(object:Dynamic, x:Float, y:Float, distance:Float = 1)
+	public static function stepTowards(object:Position, x:Float, y:Float, distance:Float = 1)
 	{
 		point.x = x - object.x;
 		point.y = y - object.y;
@@ -455,7 +461,7 @@ class HXP
 	 * @param	anchor		The anchor object.
 	 * @param	distance	The max distance object can be anchored to the anchor.
 	 */
-	public static inline function anchorTo(object:Dynamic, anchor:Dynamic, distance:Float = 0)
+	public static inline function anchorTo(object:Position, anchor:Position, distance:Float = 0)
 	{
 		point.x = object.x - anchor.x;
 		point.y = object.y - anchor.y;
@@ -486,7 +492,7 @@ class HXP
 	 * @param	x			X offset.
 	 * @param	y			Y offset.
 	 */
-	public static inline function angleXY(object:Dynamic, angle:Float, length:Float = 1, x:Float = 0, y:Float = 0)
+	public static inline function angleXY(object:Position, angle:Float, length:Float = 1, x:Float = 0, y:Float = 0)
 	{
 		angle *= RAD;
 		object.x = Math.cos(angle) * length + x;
@@ -514,7 +520,7 @@ class HXP
 	 * @param	angle		The amount of degrees to rotate by.
 	 * @param	relative	If the angle is relative to the angle between the object and the anchor.
 	 */
-	public static inline function rotateAround(object:Dynamic, anchor:Dynamic, angle:Float = 0, relative:Bool = true)
+	public static inline function rotateAround(object:Position, anchor:Position, angle:Float = 0, relative:Bool = true)
 	{
 		if (relative) angle += HXP.angle(anchor.x, anchor.y, object.x, object.y);
 		HXP.angleXY(object, angle, HXP.distance(anchor.x, anchor.y, object.x, object.y), anchor.x, anchor.y);
@@ -657,7 +663,7 @@ class HXP
 	 * @param	height		Rectangle's height.
 	 * @param	padding		Rectangle's padding.
 	 */
-	public static inline function clampInRect(object:Dynamic, x:Float, y:Float, width:Float, height:Float, padding:Float = 0)
+	public static inline function clampInRect(object:Position, x:Float, y:Float, width:Float, height:Float, padding:Float = 0)
 	{
 		object.x = clamp(object.x, x + padding, x + width - padding);
 		object.y = clamp(object.y, y + padding, y + height - padding);
@@ -739,6 +745,11 @@ class HXP
 	}
 
 	/**
+	 * Same as rand. For forward compatibility.
+	 */
+	public static inline function randInt(amount:Int) return rand(amount);
+
+	/**
 	 * Optimized version of Lambda.indexOf for Array on dynamic platforms (Lambda.indexOf is less performant on those targets).
 	 *
 	 * @param	arr		The array to look into.
@@ -747,9 +758,9 @@ class HXP
 	 * This function uses operator [==] to check for equality.
 	 * If [v] does not exist in [arr], the result is -1.
 	 **/
-	public static inline function indexOf<T>(arr:Array<T>, v:T) : Int
+	public static inline function indexOf<T>(arr:Array<T>, v:T):Int
 	{
-		#if (haxe_ver >= 3.1) 
+		#if (haxe_ver >= 3.1)
 		return arr.indexOf(v);
 		#else
 			#if (flash || js)
@@ -767,12 +778,12 @@ class HXP
 	 * @param	loop		If true, will jump to the first item after the last item is reached.
 	 * @return	The next item in the list.
 	 */
-	public static inline function next<T>(current:T, options:Array<T>, loop:Bool = true):Dynamic
+	public static inline function next<T>(current:T, options:Array<T>, loop:Bool = true):T
 	{
 		if (loop)
 			return options[(indexOf(options, current) + 1) % options.length];
 		else
-			return options[Std.int(Math.max(indexOf(options, current) + 1, options.length - 1))];
+			return options[Std.int(Math.min(indexOf(options, current) + 1, options.length - 1))];
 	}
 
 	/**
@@ -782,7 +793,7 @@ class HXP
 	 * @param	loop		If true, will jump to the last item after the first is reached.
 	 * @return	The previous item in the list.
 	 */
-	public static inline function prev<T>(current:T, options:Array<T>, loop:Bool = true):Dynamic
+	public static inline function prev<T>(current:T, options:Array<T>, loop:Bool = true):T
 	{
 		if (loop)
 			return options[((indexOf(options, current) - 1) + options.length) % options.length];
@@ -797,9 +808,33 @@ class HXP
 	 * @param	b			Item b.
 	 * @return	Returns a if current is b, and b if current is a.
 	 */
-	public static inline function swap(current:Dynamic, a:Dynamic, b:Dynamic):Dynamic
+	public static inline function swap<T>(current:T, a:T, b:T):T
 	{
 		return current == a ? b : a;
+	}
+
+	/**
+	 * Binary insertion sort
+	 * @param list     A list to insert into
+	 * @param key      The key to insert
+	 * @param compare  A comparison function to determine sort order
+	 */
+	public static function insertSortedKey<T>(list:Array<T>, key:T, compare:T->T->Int):Void
+	{
+		var result:Int = 0,
+			mid:Int = 0,
+			min:Int = 0,
+			max:Int = list.length - 1;
+		while (max >= min)
+		{
+			mid = min + Std.int((max - min) / 2);
+			result = compare(list[mid], key);
+			if (result > 0) max = mid - 1;
+			else if (result < 0) min = mid + 1;
+			else return;
+		}
+
+		list.insert(result > 0 ? mid : mid + 1, key);
 	}
 
 	/**
@@ -952,17 +987,12 @@ class HXP
 	 * @param	source		Embedded Bitmap class.
 	 * @return	The stored BitmapData object.
 	 */
-	public static function getBitmap(source:Dynamic):BitmapData
+	public static function getBitmap(name:String):BitmapData
 	{
-		var name:String = Std.string(source);
 		if (_bitmap.exists(name))
 			return _bitmap.get(name);
 
-#if openfl
-		var data:BitmapData = Assets.getBitmapData(source, false);
-#else
-		var data:BitmapData = source.bitmapData;
-#end
+		var data:BitmapData = openfl.Assets.getBitmapData(name, false);
 
 		if (data != null)
 			_bitmap.set(name, data);
@@ -970,9 +1000,25 @@ class HXP
 		return data;
 	}
 
-	public static function removeBitmap(source:Dynamic):Bool
+	/**
+	 * Overwrites the image cache for a given name
+	 * @param name  The name of the BitmapData to overwrite.
+	 * @param data  The BitmapData object.
+	 * @return True if the prior bitmap was removed.
+	 */
+	public static function overwriteBitmapCache(name:String, data:BitmapData):Bool
 	{
-		var name:String = Std.string(source);
+		_bitmap.set(name, data);
+		return removeBitmap(name);
+	}
+
+	/**
+	 * Removes a bitmap from the cache
+	 * @param name  The name of the bitmap to remove.
+	 * @return True if the bitmap was removed.
+	 */
+	public static function removeBitmap(name:String):Bool
+	{
 		if (_bitmap.exists(name))
 		{
 			var bitmap = _bitmap.get(name);
@@ -1045,7 +1091,7 @@ class HXP
 	 * Logs data to the console.
 	 * @param	...data		The data parameters to log, can be variables, objects, etc. Parameters will be separated by a space (" ").
 	 */
-	public static var log:Dynamic = Reflect.makeVarArgs(function(data:Array<Dynamic>)
+	public static var log = Reflect.makeVarArgs(function(data:Array<Dynamic>)
 	{
 		if (_console != null)
 		{
@@ -1057,7 +1103,7 @@ class HXP
 	 * Adds properties to watch in the console's debug panel.
 	 * @param	...properties		The properties (strings) to watch.
 	 */
-	public static var watch:Dynamic = Reflect.makeVarArgs(function(properties:Array<Dynamic>)
+	public static var watch = Reflect.makeVarArgs(function(properties:Array<Dynamic>)
 	{
 		if (_console != null)
 		{
@@ -1077,7 +1123,7 @@ class HXP
 	 * 						tweener		The Tweener to add this Tween to.
 	 * @return	The added MultiVarTween object.
 	 *
-	 * Example: HXP.tween(object, { x: 500, y: 350 }, 2.0, { ease: easeFunction, complete: onComplete } );
+	 * Example: HXP.tween(object, { x: 500, y: 350 }, 2.0, { ease: Float -> Float, complete: onComplete } );
 	 */
 	public static function tween(object:Dynamic, values:Dynamic, duration:Float, options:Dynamic = null):MultiVarTween
 	{
@@ -1085,13 +1131,13 @@ class HXP
 		{
 			var delay:Float = options.delay;
 			Reflect.deleteField( options, "delay" );
-			HXP.alarm(delay, function (o:Dynamic):Void { HXP.tween(object, values, duration, options); });
+			HXP.alarm(delay, function (o:Dynamic) HXP.tween(object, values, duration, options));
 			return null;
 		}
 
 		var type:TweenType = TweenType.OneShot,
-			complete:CompleteCallback = null,
-			ease:EaseFunction = null,
+			complete:Dynamic -> Void = null,
+			ease:Float -> Float = null,
 			tweener:Tweener = HXP.tweener;
 		if (Std.is(object, Tweener)) tweener = cast(object, Tweener);
 		if (options != null)
@@ -1103,7 +1149,7 @@ class HXP
 		}
 		var tween:MultiVarTween = new MultiVarTween(complete, type);
 		tween.tween(object, values, duration, ease);
-		tweener.addTween(tween);
+		tweener.addTween(tween, true);
 		return tween;
 	}
 
@@ -1117,7 +1163,7 @@ class HXP
 	 *
 	 * Example: HXP.alarm(5.0, callbackFunction, TweenType.Looping); // Calls callbackFunction every 5 seconds
 	 */
-	public static function alarm(delay:Float, complete:CompleteCallback, ?type:TweenType = null, tweener:Tweener = null):Alarm
+	public static function alarm(delay:Float, complete:Dynamic -> Void, ?type:TweenType, tweener:Tweener = null):Alarm
 	{
 		if (type == null) type = TweenType.OneShot;
 		if (tweener == null) tweener = HXP.tweener;
@@ -1138,7 +1184,7 @@ class HXP
 	public static function frames(from:Int, to:Int, skip:Int = 0):Array<Int>
 	{
 		var a:Array<Int> = new Array<Int>();
-		skip ++;
+		skip++;
 		if (from < to)
 		{
 			while (from <= to)
@@ -1162,30 +1208,31 @@ class HXP
 	 * Shuffles the elements in the array.
 	 * @param	a		The Object to shuffle (an Array or Vector).
 	 */
-	public static function shuffle(a:Dynamic)
+	public static function shuffle<T>(a:Array<T>)
 	{
-		if (Std.is(a, Array))
+		var i:Int = a.length, j:Int, t:T;
+		while (--i > 0)
 		{
-			var i:Int = a.length, j:Int, t:Dynamic;
-			while (--i > 0)
-			{
-				t = a[i];
-				a[i] = a[j = HXP.rand(i + 1)];
-				a[j] = t;
-			}
+			t = a[i];
+			a[i] = a[j = HXP.rand(i + 1)];
+			a[j] = t;
 		}
 	}
 
 	/**
-	 * Resize the stage.
+	 * Resize the stage, not available on flash or html5.
 	 *
 	 * @param	width	New width.
 	 * @param	height	New height.
 	 */
-	public static function resizeStage (width:Int, height:Int)
+	public static function resizeStage(width:Int, height:Int)
 	{
 		#if (cpp || neko)
+		#if openfl_legacy
 		HXP.stage.resize(width, height);
+		#else
+		openfl.Lib.application.window.resize(width, height);
+		#end
 		resize(width, height);
 		#elseif debug
 		trace("Can only resize the stage in cpp or neko targets.");
@@ -1193,29 +1240,24 @@ class HXP
 	}
 
 	public static var time(null, set):Float;
-	private static inline function set_time(value:Float):Float {
+	private static inline function set_time(value:Float):Float
+	{
 		_time = value;
 		return _time;
 	}
-
-	public static inline function gotoIsNull():Bool { return (_goto == null); }
-
-	// Scene information.
-	private static var _scene:Scene = new Scene();
-	private static var _goto:Scene;
 
 	// Console information.
 	private static var _console:Console;
 
 	// Time information.
 	private static var _time:Float;
-	public static var _updateTime:Float;
-	public static var _renderTime:Float;
-	public static var _gameTime:Float;
-	public static var _systemTime:Float;
+	@:dox(hide) public static var _updateTime:Float;
+	@:dox(hide) public static var _renderTime:Float;
+	@:dox(hide) public static var _gameTime:Float;
+	@:dox(hide) public static var _systemTime:Float;
 
 	// Bitmap storage.
-	private static var _bitmap:Map<String,BitmapData> = new Map<String,BitmapData>();
+	private static var _bitmap:Map<String, BitmapData> = new Map<String, BitmapData>();
 
 	// Pseudo-random number generation (the seed is set in Engine's contructor).
 	private static var _seed:Int = 0;
@@ -1223,24 +1265,30 @@ class HXP
 	// Volume control.
 	private static var _volume:Float = 1;
 	private static var _pan:Float = 0;
+	#if flash
 	private static var _soundTransform:SoundTransform = new SoundTransform();
+	#end
 
 	// Used for rad-to-deg and deg-to-rad conversion.
+	/** Convert a radian value into a degree value. */
 	public static var DEG(get, never):Float;
-	public static inline function get_DEG(): Float { return -180 / Math.PI; }
+	private static inline function get_DEG(): Float return -180 / Math.PI; 
+	/** Convert a degree value into a radian value. */
 	public static var RAD(get, never):Float;
-	public static inline function get_RAD(): Float { return Math.PI / -180; }
+	private static inline function get_RAD(): Float return Math.PI / -180; 
 
 	// Global Flash objects.
+	/** The flash stage. */
 	public static var stage:Stage;
+	/** The Engine instance. */
 	public static var engine:Engine;
 
 	// Global objects used for rendering, collision, etc.
-	public static var point:Point = new Point();
-	public static var point2:Point = new Point();
-	public static var zero:Point = new Point();
-	public static var rect:Rectangle = new Rectangle();
-	public static var matrix:Matrix = new Matrix();
-	public static var sprite:Sprite = new Sprite();
-	public static var entity:Entity;
+	@:dox(hide) public static var point:Point = new Point();
+	@:dox(hide) public static var point2:Point = new Point();
+	@:dox(hide) public static var zero:Point = new Point();
+	@:dox(hide) public static var rect:Rectangle = new Rectangle();
+	@:dox(hide) public static var matrix:Matrix = new Matrix();
+	@:dox(hide) public static var sprite:Sprite = new Sprite();
+	@:dox(hide) public static var entity:Entity;
 }

@@ -1,8 +1,8 @@
 package com.haxepunk.graphics;
 
 /**
- * Template used by Spritemap to define animations. Don't create
- * these yourself, instead you can fetch them with Spritemap's add().
+ * Template used by `Spritemap` to define animations. Don't create
+ * these yourself, instead you can fetch them with `Spritemap.add`.
  */
 class Animation
 {
@@ -13,29 +13,31 @@ class Animation
 	 * @param	frameRate	Animation speed.
 	 * @param	loop		If the animation should loop.
 	 */
-	public function new(name:String, frames:Array<Int>, frameRate:Float = 0, loop:Bool = true)
+	public function new(name:String, frames:Array<Int>, frameRate:Float = 0, loop:Bool = true, parent:Spritemap = null)
 	{
         this.name       = name;
         this.frames     = frames;
-        this.frameRate  = frameRate;
+        this.frameRate  = (frameRate == 0 ? HXP.assignedFrameRate : frameRate);
         this.loop       = loop;
         this.frameCount = frames.length;
+        this.parent 	= parent;
 	}
 
 	/**
 	 * Plays the animation.
 	 * @param	reset		If the animation should force-restart if it is already playing.
 	 */
-	public function play(reset:Bool = false)
+	public function play(reset:Bool = false, reverse:Bool = false)
 	{
-		_parent.play(name, reset);
+		if (name == null)
+			_parent.playAnimation(this, reset, reverse);
+		else
+			_parent.play(name, reset, reverse);
 	}
 
+	@:dox(hide)
 	public var parent(null, set):Spritemap;
-	private function set_parent(value:Spritemap):Spritemap {
-		_parent = value;
-		return _parent;
-	}
+	private function set_parent(value:Spritemap):Spritemap return _parent = value;
 
 	/**
 	 * Name of the animation.

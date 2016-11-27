@@ -1,23 +1,30 @@
 package com.haxepunk;
 
-import com.haxepunk.Entity;
 import com.haxepunk.math.Projection;
 import com.haxepunk.math.Vector;
 import com.haxepunk.masks.Masklist;
 import flash.display.Graphics;
-import flash.geom.Point;
-
-typedef MaskCallback = Dynamic -> Bool;
 
 /**
  * Base class for Entity collision masks.
+ * Do not use this directly, instead use the classes in com.haxepunk.masks.*
  */
 class Mask
 {
 	/**
 	 * The parent Entity of this mask.
 	 */
-	public var parent:Entity;
+	public var parent(get, set):Entity;
+	private inline function get_parent():Entity
+	{
+		return _parent != Entity._EMPTY ? _parent : null;
+	}
+	private function set_parent(value:Entity):Entity
+	{
+		if (value == null) _parent = Entity._EMPTY;
+		else _parent = value; update();
+		return value;
+	}
 
 	/**
 	 * The parent Masklist of the mask.
@@ -27,10 +34,12 @@ class Mask
 	/**
 	 * Constructor.
 	 */
-	public function new()
+	@:allow(com.haxepunk)
+	private function new()
 	{
+		_parent = Entity._EMPTY;
 		_class = Type.getClassName(Type.getClass(this));
-		_check = new Map<String,MaskCallback>();
+		_check = new Map<String, Dynamic -> Bool>();
 		_check.set(Type.getClassName(Mask), collideMask);
 		_check.set(Type.getClassName(Masklist), collideMasklist);
 	}
@@ -42,12 +51,7 @@ class Mask
 	 */
 	public function collide(mask:Mask):Bool
 	{
-		if (parent == null)
-		{
-			throw "Mask must be attached to a parent Entity";
-		}
-
-		var cbFunc:MaskCallback = _check.get(mask._class);
+		var cbFunc:Dynamic -> Bool = _check.get(mask._class);
 		if (cbFunc != null) return cbFunc(mask);
 
 		cbFunc = mask._check.get(_class);
@@ -59,10 +63,10 @@ class Mask
 	/** @private Collide against an Entity. */
 	private function collideMask(other:Mask):Bool
 	{
-		return parent.x - parent.originX + parent.width > other.parent.x - other.parent.originX
-			&& parent.y - parent.originY + parent.height > other.parent.y - other.parent.originY
-			&& parent.x - parent.originX < other.parent.x - other.parent.originX + other.parent.width
-			&& parent.y - parent.originY < other.parent.y - other.parent.originY + other.parent.height;
+		return _parent.x - _parent.originX + _parent.width > other._parent.x - other._parent.originX
+			&& _parent.y - _parent.originY + _parent.height > other._parent.y - other._parent.originY
+			&& _parent.x - _parent.originX < other._parent.x - other._parent.originX + other._parent.width
+			&& _parent.y - _parent.originY < other._parent.y - other._parent.originY + other._parent.height;
 	}
 
 	private function collideMasklist(other:Masklist):Bool
@@ -70,52 +74,42 @@ class Mask
 		return other.collide(this);
 	}
 
-	/** @private Assigns the mask to the parent. */
-	public function assignTo(parent:Entity)
-	{
-		this.parent = parent;
-		if (parent != null) update();
-	}
-
 	/**
 	 * Override this
 	 */
-	public function debugDraw(graphics:Graphics, scaleX:Float, scaleY:Float):Void
-	{
-
-	}
+	@:dox(hide)
+	public function debugDraw(graphics:Graphics, scaleX:Float, scaleY:Float):Void {}
 
 	/** Updates the parent's bounds for this mask. */
-	public function update()
-	{
+	@:dox(hide)
+	public function update() {}
 
-	}
-
+	@:dox(hide)
 	public function project(axis:Vector, projection:Projection):Void
 	{
 		var cur:Float,
 			max:Float = Math.NEGATIVE_INFINITY,
 			min:Float = Math.POSITIVE_INFINITY;
 
-		cur = -parent.originX * axis.x - parent.originY * axis.y;
+		cur = -_parent.originX * axis.x - _parent.originY * axis.y;
 		if (cur < min)
 			min = cur;
 		if (cur > max)
 			max = cur;
 
-		cur = (-parent.originX + parent.width) * axis.x - parent.originY * axis.y;
+		cur = (-_parent.originX + _parent.width) * axis.x - _parent.originY * axis.y;
 		if (cur < min)
 			min = cur;
 		if (cur > max)
 			max = cur;
 
-		cur = -parent.originX * axis.x + (-parent.originY + parent.height) * axis.y;
+		cur = -_parent.originX * axis.x + (-_parent.originY + _parent.height) * axis.y;
 		if (cur < min)
 			min = cur;
 		if (cur > max)
 			max = cur;
 
-		cur = (-parent.originX + parent.width) * axis.x + (-parent.originY + parent.height)* axis.y;
+		cur = (-_parent.originX + _parent.width) * axis.x + (-_parent.originY + _parent.height) * axis.y;
 		if (cur < min)
 			min = cur;
 		if (cur > max)
@@ -127,5 +121,6 @@ class Mask
 
 	// Mask information.
 	private var _class:String;
-	private var _check:Map<String,MaskCallback>;
+	private var _check:Map<String, Dynamic -> Bool>;
+	private var _parent:Entity;
 }

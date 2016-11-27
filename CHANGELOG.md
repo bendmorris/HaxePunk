@@ -1,5 +1,93 @@
 HaxePunk CHANGELOG
 
+v2.5.6
+------------------------------
+* [ibilon] Fix input update
+* [ibilon] Guard onTouchMove against null object exception
+* [icefoxen, ibilon] Update documentation
+
+v2.5.5
+------------------------------
+* Adding README.md to zip for haxelib
+* [Anheurystics] Fixed screen not clearing on HTML5
+* [scriptorum] Added global volume/pan on native
+
+v2.5.4
+------------------------------
+* Fixes for latest lime and openfl as well as Haxe 3.2
+* [ibilon] Add Tilemap.createGrid
+* [ibilon] Add Preloader progress bar container and allow preloader on html5
+* [Anheurystics] Fixed HXP.next()
+* [AbelToy] Added advanced tinting
+* [ibilon] Allow setting type volume and pan during play
+* [Oggzie] Fix addTween's start
+* [VoEC] Fixing issues when flipping spritemaps
+* [curlybrace1] Fixed error in Hitbox/Hitbox collision
+* [gsarwohadi] Allow the use of runtime sound in Sfx
+* [ibilon] Fix atlas creation when using default value for frame dimension in Spritemap
+* [ibilon] Throw an exception instead of failling silently when asking for an invalid region (Atlas)
+* [ibilon] Add error to Spritemap when frame dimensions are bigger than the image's dimensions
+* [webninjasi] Fix searching on API docs
+* [ibilon] Project creator now creates ide specific file as an option (FlashDevelop and Sublime)
+* [jahndis] Fixed Image.createPolygon() to properly color the created Image
+* [scriptorum] Fixed AtlasData memory leak
+* [ibilon] Fixed Spritmap.stop when reset
+* [ibilon] Do not apply gravity to particles when emitter isn't active
+* [scriptorum] Fixed scene-changing
+* [ibilon] Improve TextureAtlas load
+* [scriptorum] Fixed tilemap.loadFrom2DArray, add ability to display transparent Tilemaps
+* [ibilon] Fixed command call in setup tool
+* [ibilon] Made lime-hybrid as default for now, fix tool documentation opening
+* [scriptorum] Fixed Image.drawPolygon memory leak
+* [ibilon] Replaced haxelib call to find haxelib.json with maco.Context.resolvePath
+* [ibilon] Default smooth value of graphics classes if now set to false if stage quality is low, true otherwise
+
+v2.5.3
+------------------------------
+* Update to latest lime, openfl and hxcpp
+* Various internal improvements
+* [MattTuttle] Deprecating HXP.blackColor
+* [MattTuttle] Allow scenes to be pushed and popped
+* [MattTuttle] Allow initializing an Image with a TileAtlas
+* [Nananas] Ouya controller mapping for desktop
+* [azrafe7] Fixes for masklist collisions
+* [ibilon] Fix Text.addStyle on native
+* [ibilon] Fix text and richText color change
+* [ibilon] Fix parent null value in mask calculations
+* [scriptorum] Added Spritemap support for playing adhoc animations
+* [scriptorum] Added reset control to Spritemap.stop() Fixed stop()
+* [ibilon] Fix tween callback
+* [Anheurystics] Fixed Draw.graphic not working for native targets
+* [ibilon] Can disable HaxePunk's preloader with -DnoHaxepunkPreloader
+* [ibilon] Can play spritemap anim in reverse
+* [MattTuttle] Fixing out of bounds error in insertSortedKey
+* [MattTuttle] Fixing crash when type doesn't exist in types map
+* [MattTuttle] Missing types no longer crash collide functions
+* [eliasku] Update Ease.hx
+* [bendmorris] Don't round drawing positions or sizes to integers
+* [bendmorris] Fixing some buffer size and word wrap issues relating to font size and scale
+* [bendmorris] Fix for functions like collidePoint that find elements by type
+* [bendmorris] Adjust scaling of individual tiles to ensure no gaps or overlaps
+* [bendmorris] Draw tilemap tiles starting from integer positions
+* [Marc010] Add stop() function to Spritemap
+* [Marc010] Ported Image.createPolygon() from Flashpunk
+* [azrafe7] Added support to XNA (pixelizer) font to BitmapText
+* [azrafe7] Fixed polygon collision
+* [XXLTomate] Changed default flash background color to 0x00000000 to match native
+* [XXLTomate] Use HXP.stage.color in Screen.hx as default color
+* [Gama11] Joystick: update XBOX_GAMEPAD for OpenFL 1.4.0
+* [azrafe7] BitmapFont: fixed some glyphs in default font
+* [bendmorris] Embed assets by default on all platforms
+* [azrafe7] Fixes and improvements for Polygon.removeDuplicateAxes()
+* [bendmorris] Fixing emitter bugs when frameindex is outside the bounds of frame
+* [bendmorris] Adding screen shake
+* [bendmorris] Adding basic gesture controls for multitouch-enabled devices
+* [bendmorris] Allow mixed rendering of both smoothed and non-smoothed graphics
+* [lived123456] Update ParticleType.hx
+* [zebbedy] Compensate for openfl text color bug on Android
+* [bendmorris, ibilon] Fix image rotation when using uneven screen scalling in hardware rendermode
+* [ibilon] Changed to dox for documentation generation
+
 v2.5.2
 ------------------------------
 * [bendmorris] Adding clear method to Emitter
@@ -19,7 +107,7 @@ v2.5.2
 * [azrafe7] HXP.INT_MIN/MAX_VALUE
 * [azrafe7] Small fix for seed clamping
 * [azrafe7] Inited min/max in Mask.project() with non-arbitrary values
-* [azrafe7] Added rectPlus() to Draw 
+* [azrafe7] Added rectPlus() to Draw
 * [ibilon] Add flashdevelop project file to the new project template
 * [ibilon] Use Array.indexOf if Haxe 3.1
 * [azrafe7] Small fix for circle vs hitbox collision

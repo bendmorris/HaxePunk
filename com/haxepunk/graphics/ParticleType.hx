@@ -1,10 +1,8 @@
 package com.haxepunk.graphics;
 
-import com.haxepunk.HXP;
-import com.haxepunk.utils.Ease;
-
 import flash.display.BitmapData;
 import flash.geom.Rectangle;
+import com.haxepunk.utils.Ease;
 
 /**
  * Template used to define a particle type used by the Emitter class. Instead
@@ -13,6 +11,11 @@ import flash.geom.Rectangle;
 @:allow(com.haxepunk.graphics.Emitter)
 class ParticleType
 {
+	public inline function ease(?f:EaseFunction, t:Float):Float
+	{
+		return f == null ? t : f(t);
+	}
+
 	/**
 	 * Constructor.
 	 * @param	name			Name of the particle type.
@@ -23,18 +26,21 @@ class ParticleType
 	 */
 	public function new(name:String, frames:Array<Int>, width:Int, frameWidth:Int, frameHeight:Int)
 	{
-		_red = _green = _blue = _alpha = 1;
-		_redRange = _greenRange = _blueRange = _alphaRange = 0;
+		_red = _green = _blue = _alpha = _scale = _trailLength = 1;
+		_redRange = _greenRange = _blueRange = _alphaRange = _scaleRange = _trailDelay = 0;
+		_trailAlpha = 1;
+		_startAngle = _spanAngle = _startAngleRange = _spanAngleRange = 0;
 
 		_name = name;
 		_frame = new Rectangle(0, 0, frameWidth, frameHeight);
 		if (frames == null) frames = new Array<Int>();
+		if (frames.length == 0) frames.push(0);
 		_frames = frames;
 
-        _angle    = _angleRange    = 0;
-        _gravity  = _gravityRange  = 0;
-        _duration = _durationRange = 0;
-        _distance = _distanceRange = 0;
+		_angle    = _angleRange    = 0;
+		_gravity  = _gravityRange  = 0;
+		_duration = _durationRange = 0;
+		_distance = _distanceRange = 0;
 	}
 
 	/**
@@ -51,10 +57,10 @@ class ParticleType
 	 */
 	public function setMotion(angle:Float, distance:Float, duration:Float, angleRange:Float = 0, distanceRange:Float = 0, durationRange:Float = 0, ease:EaseFunction = null, backwards:Bool = false):ParticleType
 	{
-		_angle = angle * HXP.RAD;
+		_angle = angle;
 		_distance = distance;
 		_duration = duration;
-		_angleRange = angleRange * HXP.RAD;
+		_angleRange = angleRange;
 		_distanceRange = distanceRange;
 		_durationRange = durationRange;
 		_ease = ease;
@@ -108,7 +114,40 @@ class ParticleType
 		_alpha = start;
 		_alphaRange = finish - start;
 		_alphaEase = ease;
-		createBuffer();
+		return this;
+	}
+
+	/**
+	 * Sets the scale range of this particle type.
+	 * @param	start		The starting scale.
+	 * @param	finish		The finish sale.
+	 * @param	ease		Optional easer function.
+	 * @return	This ParticleType object.
+	 */
+	public function setScale(start:Float = 1, finish:Float = 0, ease:EaseFunction = null):ParticleType
+	{
+		_scale = start;
+		_scaleRange = finish - start;
+		_scaleEase = ease;
+		return this;
+	}
+
+	/**
+	 * Sets the rotation range of this particle type.
+	 * @param	startAngle	Starting angle.
+	 * @param	spanAngle	Total amount of degrees to rotate.
+	 * @param	startAngleRange	Random amount to add to the particle's starting angle.
+	 * @param	spanAngleRange	Random amount to add to the particle's span angle.
+	 * @param	ease	Optional easer function.
+	 * @return	This ParticleType object.
+	 */
+	public function setRotation(startAngle:Float, spanAngle:Float, startAngleRange:Float = 0, spanAngleRange:Float = 0, ease:EaseFunction = null):ParticleType
+	{
+		_startAngle = startAngle;
+		_spanAngle = spanAngle;
+		_startAngleRange = startAngleRange;
+		_spanAngleRange = spanAngleRange;
+		_rotationEase = ease;
 		return this;
 	}
 
@@ -130,16 +169,22 @@ class ParticleType
 		_greenRange = (finish >> 8 & 0xFF) / 255 - _green;
 		_blueRange = (finish & 0xFF) / 255 - _blue;
 		_colorEase = ease;
-		createBuffer();
 		return this;
 	}
 
-	/** @private Creates the buffer if it doesn't exist. */
-	private function createBuffer()
+	/**
+	 * Sets the trail of this particle type.
+	 * @param	length		Number of trailing particles to draw.
+	 * @param	delay		Time to delay each trailing particle, in seconds.
+	 * @param	alpha		Multiply each successive trail particle's alpha by this amount.
+	 * @return	This ParticleType object.
+	 */
+	public function setTrail(length:Int = 1, delay:Float = 0.1, alpha:Float = 1):ParticleType
 	{
-		if (_buffer != null) return;
-		_buffer = HXP.createBitmap(Std.int(_frame.width), Std.int(_frame.height), true);
-		_bufferRect = _buffer.rect;
+		_trailLength = length;
+		_trailDelay = delay;
+		_trailAlpha = alpha;
+		return this;
 	}
 
 	// Particle information.
@@ -166,6 +211,18 @@ class ParticleType
 	private var _alphaRange:Float;
 	private var _alphaEase:EaseFunction;
 
+	// Scale information.
+	private var _scale:Float;
+	private var _scaleRange:Float;
+	private var _scaleEase:EaseFunction;
+
+	// Rotation information.
+	private var _startAngle:Float;
+	private var _spanAngle:Float;
+	private var _startAngleRange:Float;
+	private var _spanAngleRange:Float;
+	private var _rotationEase:EaseFunction;
+
 	// Color information.
 	private var _red:Float;
 	private var _redRange:Float;
@@ -174,6 +231,11 @@ class ParticleType
 	private var _blue:Float;
 	private var _blueRange:Float;
 	private var _colorEase:EaseFunction;
+
+	// Trail information
+	private var _trailLength:Int;
+	private var _trailDelay:Float;
+	private var _trailAlpha:Float;
 
 	// Buffer information.
 	private var _buffer:BitmapData;

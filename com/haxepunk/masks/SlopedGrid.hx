@@ -1,7 +1,5 @@
 package com.haxepunk.masks;
 
-import flash.display.Bitmap;
-import flash.display.BitmapData;
 import flash.display.Graphics;
 import flash.geom.Point;
 import flash.geom.Rectangle;
@@ -21,7 +19,8 @@ enum TileType
 	BottomRight;
 }
 
-typedef Tile = {
+typedef Tile =
+{
 	var type:TileType;
 	@:optional var slope:Float;
 	@:optional var yOffset:Float;
@@ -37,7 +36,6 @@ class SlopedGrid extends Hitbox
 	 * If x/y positions should be used instead of columns/rows.
 	 */
 	public var usePositions:Bool;
-
 
 	/**
 	 * Constructor.
@@ -98,12 +96,8 @@ class SlopedGrid extends Hitbox
 	 */
 	public function collidePoint(cx:Float, cy:Float):Bool
 	{
-		var px:Float = _x, py:Float = _y;
-		if (parent != null)
-		{
-			px += parent.x;
-			py += parent.y;
-		}
+		var px:Float = _x + _parent.x, 
+			py:Float = _y + _parent.y;
 
 		var column = Std.int((cx - px) / _tile.width),
 			row = Std.int((cy - py) / _tile.height),
@@ -230,7 +224,7 @@ class SlopedGrid extends Hitbox
 	 */
 	public inline function getTile(column:Int = 0, row:Int = 0):Tile
 	{
-		if ( ! checkTile(column, row) )
+		if (!checkTile(column, row))
 		{
 			return _emptyTile;
 		}
@@ -292,13 +286,13 @@ class SlopedGrid extends Hitbox
 	 * The tile width.
 	 */
 	public var tileWidth(get, never):Int;
-	private inline function get_tileWidth():Int { return Std.int(_tile.width); }
+	private inline function get_tileWidth():Int return Std.int(_tile.width); 
 
 	/**
 	 * The tile height.
 	 */
 	public var tileHeight(get, never):Int;
-	private inline function get_tileHeight():Int { return Std.int(_tile.height); }
+	private inline function get_tileHeight():Int return Std.int(_tile.height); 
 
 	/**
 	 * How many columns the grid has
@@ -371,43 +365,27 @@ class SlopedGrid extends Hitbox
 	/** @private Collides against an Entity. */
 	override private function collideMask(other:Mask):Bool
 	{
-		if (other.parent != null)
-		{
-			var x:Float = _x, y:Float = _y;
-			if (parent != null)
-			{
-				x += parent.x;
-				y += parent.y;
-			}
-			return collideBox(other.parent.x - other.parent.originX,
-				other.parent.y - other.parent.originY,
-				other.parent.width, other.parent.height,
-				parent.x + parent.originX, parent.y + parent.originY);
-		}
-		else
-		{
-			return false;
-		}
+		var x:Float = _x + _parent.x, 
+			y:Float = _y + _parent.y;
+			
+		return collideBox(other._parent.x - other._parent.originX,
+				other._parent.y - other._parent.originY,
+				other._parent.width, other._parent.height,
+				_parent.x + _parent.originX, _parent.y + _parent.originY);
 	}
 
 	/** @private Collides against a Hitbox. */
 	override private function collideHitbox(other:Hitbox):Bool
 	{
-		var x:Float = _x, y:Float = _y,
-			ox:Float = other._x, oy:Float = other._y;
-		if (other.parent != null)
-		{
-			ox += other.parent.x;
-			oy += other.parent.y;
-		}
-		if (parent != null)
-		{
-			x += parent.x;
-			y += parent.y;
-		}
+		var x:Float = _x + _parent.x, 
+			y:Float = _y + _parent.y,
+			ox:Float = other._x + other._parent.x, 
+			oy:Float = other._y + other._parent.y;
+		
 		return collideBox(ox, oy, other._width, other._height, x, y);
 	}
 
+	@:dox(hide)
 	override public function debugDraw(graphics:Graphics, scaleX:Float, scaleY:Float):Void
 	{
 		var cellX:Float, cellY:Float,
@@ -415,8 +393,8 @@ class SlopedGrid extends Hitbox
 			stepY = tileHeight * scaleY;
 
 		// determine drawing location
-		var px = _x + parent.x - HXP.camera.x;
-		var py = _y + parent.y - HXP.camera.y;
+		var px = _x + _parent.x - HXP.camera.x;
+		var py = _y + _parent.y - HXP.camera.y;
 
 		// determine start and end tiles to draw (optimization)
 		var startx = Math.floor( -px / tileWidth),
@@ -446,9 +424,7 @@ class SlopedGrid extends Hitbox
 			for (x in startx...destx)
 			{
 				var tile = row[x];
-				if (tile == null || tile.type == null)
-				{
-				}
+				if (tile == null || tile.type == null) {}
 				else if (tile.type == Solid)
 				{
 					graphics.lineStyle(1, 0xFFFFFF, 0.3);

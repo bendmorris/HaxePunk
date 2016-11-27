@@ -5,6 +5,7 @@ import flash.display.Graphics;
 import flash.geom.Point;
 import flash.geom.Rectangle;
 import com.haxepunk.HXP;
+import com.haxepunk.Graphic;
 
 /**
  * Special Image object that can display blocks of tiles.
@@ -18,7 +19,7 @@ class TiledImage extends Image
 	 * @param	height		The height of the image (the texture will be drawn to fill this area).
 	 * @param	clipRect	An optional area of the source texture to use (eg. a tile from a tileset).
 	 */
-	public function new(texture:Dynamic, width:Int = 0, height:Int = 0, clipRect:Rectangle = null)
+	public function new(texture:ImageType, width:Int = 0, height:Int = 0, clipRect:Rectangle = null)
 	{
 		_graphics = HXP.sprite.graphics;
 		_offsetX = _offsetY = 0;
@@ -37,6 +38,7 @@ class TiledImage extends Image
 	}
 
 	/** @private Updates the buffer. */
+	@:dox(hide)
 	override public function updateBuffer(clearBefore:Bool = false)
 	{
 		if (blit)
@@ -47,7 +49,7 @@ class TiledImage extends Image
 				_texture = HXP.createBitmap(Std.int(_sourceRect.width), Std.int(_sourceRect.height), true);
 				_texture.copyPixels(_source, _sourceRect, HXP.zero);
 			}
-			_buffer.fillRect(_bufferRect, HXP.blackColor);
+			_buffer.fillRect(_bufferRect, 0);
 			_graphics.clear();
 			if (_offsetX != 0 || _offsetY != 0)
 			{
@@ -63,6 +65,7 @@ class TiledImage extends Image
 	}
 
 	/** Renders the image. */
+	@:dox(hide)
 	override public function renderAtlas(layer:Int, point:Point, camera:Point)
 	{
 		// determine drawing location
@@ -95,7 +98,7 @@ class TiledImage extends Image
 	 * The x-offset of the texture.
 	 */
 	public var offsetX(get, set):Float;
-	private function get_offsetX():Float { return _offsetX; }
+	private function get_offsetX():Float return _offsetX; 
 	private function set_offsetX(value:Float):Float
 	{
 		if (_offsetX == value) return value;
@@ -108,7 +111,7 @@ class TiledImage extends Image
 	 * The y-offset of the texture.
 	 */
 	public var offsetY(get, set):Float;
-	private function get_offsetY():Float { return _offsetY; }
+	private function get_offsetY():Float return _offsetY; 
 	private function set_offsetY(value:Float):Float
 	{
 		if (_offsetY == value) return value;

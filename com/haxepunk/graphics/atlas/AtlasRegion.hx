@@ -11,10 +11,9 @@ class AtlasRegion
 	 * If the region is rotated by 90 degress (used for sprite packing)
 	 */
 	public var rotated:Bool;
-	/**
-	 * The tile index used for rendering
-	 */
-	public var tileIndex(default, null):Int;
+
+	public var x(get, never):Float;
+	public var y(get, never):Float;
 	/**
 	 * Width of this region
 	 */
@@ -27,14 +26,12 @@ class AtlasRegion
 	/**
 	 * Creates a new AtlasRegion
 	 * @param  parent    The AtlasData parent to use for rendering
-	 * @param  tileIndex The tile index to use for drawTiles
 	 * @param  rect      Rectangle to set for width/height
 	 */
-	public function new(parent:AtlasData, tileIndex:Int, rect:Rectangle)
+	public function new(parent:AtlasData, rect:Rectangle)
 	{
 		this._parent = parent;
-		this.tileIndex = tileIndex;
-		this._rect = rect.clone();
+		this._rect = rect;
 		this.rotated = false;
 	}
 
@@ -80,10 +77,12 @@ class AtlasRegion
 	 */
 	public inline function draw(x:Float, y:Float, layer:Int,
 		scaleX:Float=1, scaleY:Float=1, angle:Float=0,
-		red:Float=1, green:Float=1, blue:Float=1, alpha:Float=1)
+		red:Float=1, green:Float=1, blue:Float=1, alpha:Float=1, ?smooth:Bool)
 	{
+		if (smooth == null) smooth = Atlas.smooth;
 		if (rotated) angle = angle + 90;
-		_parent.prepareTile(tileIndex, x, y, layer, scaleX, scaleY, angle, red, green, blue, alpha);
+
+		_parent.prepareTile(_rect, x, y, layer, scaleX, scaleY, angle, red, green, blue, alpha, smooth);
 	}
 
 	/**
@@ -101,19 +100,21 @@ class AtlasRegion
 	 * @param  alpha Alpha value
 	 */
 	public inline function drawMatrix(tx:Float, ty:Float, a:Float, b:Float, c:Float, d:Float,
-		layer:Int, red:Float=1, green:Float=1, blue:Float=1, alpha:Float=1)
+		layer:Int, red:Float=1, green:Float=1, blue:Float=1, alpha:Float=1, ?smooth:Bool)
 	{
+		if (smooth == null) smooth = Atlas.smooth;
+
 		if (rotated)
 		{
 			var matrix = new Matrix(a, b, c, d, tx, ty);
 			matrix.rotate(90 * HXP.RAD);
-			_parent.prepareTileMatrix(tileIndex, layer,
+			_parent.prepareTileMatrix(_rect, layer,
 				matrix.tx, matrix.ty, matrix.a, matrix.b, matrix.c, matrix.d,
-				red, green, blue, alpha);
+				red, green, blue, alpha, smooth);
 		}
 		else
 		{
-			_parent.prepareTileMatrix(tileIndex, layer, tx, ty, a, b, c, d, red, green, blue, alpha);
+			_parent.prepareTileMatrix(_rect, layer, tx, ty, a, b, c, d, red, green, blue, alpha, smooth);
 		}
 	}
 
@@ -133,11 +134,13 @@ class AtlasRegion
 	 */
 	public function toString():String
 	{
-		return "[AtlasRegion " + width + ", " + height + " " + tileIndex + "]";
+		return "[AtlasRegion " + _rect + "]";
 	}
 
-	private inline function get_width():Float { return _rect.width; }
-	private inline function get_height():Float { return _rect.height; }
+	private inline function get_x():Float return _rect.x; 
+	private inline function get_y():Float return _rect.y; 
+	private inline function get_width():Float return _rect.width; 
+	private inline function get_height():Float return _rect.height; 
 
 	private var _rect:Rectangle;
 	private var _parent:AtlasData;

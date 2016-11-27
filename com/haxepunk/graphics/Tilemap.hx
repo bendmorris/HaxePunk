@@ -8,8 +8,6 @@ import com.haxepunk.HXP;
 import com.haxepunk.graphics.atlas.TileAtlas;
 import com.haxepunk.masks.Grid;
 
-
-typedef Array2D = Array<Array<Int>>
 /**
  * A canvas to which Tiles can be drawn for fast multiple tile rendering.
  */
@@ -29,8 +27,9 @@ class Tilemap extends Canvas
 	 * @param	tileHeight			Tile height.
 	 * @param	tileSpacingWidth	Tile horizontal spacing.
 	 * @param	tileSpacingHeight	Tile vertical spacing.
+	 * @param	opaqueTiles			Indicates if this tileset contains only opaque tiles (defaults to true). Only used in Flash .
 	 */
-	public function new(tileset:Dynamic, width:Int, height:Int, tileWidth:Int, tileHeight:Int, ?tileSpacingWidth:Int=0, ?tileSpacingHeight:Int=0)
+	public function new(tileset:TileType, width:Int, height:Int, tileWidth:Int, tileHeight:Int, ?tileSpacingWidth:Int=0, ?tileSpacingHeight:Int=0, ?opaqueTiles:Bool=true)
 	{
 		_rect = HXP.rect;
 
@@ -39,6 +38,7 @@ class Tilemap extends Canvas
 		_height = height - (height % tileHeight);
 		_columns = Std.int(_width / tileWidth);
 		_rows = Std.int(_height / tileHeight);
+		_opaqueTiles = opaqueTiles;
 
 		this.tileSpacingWidth = tileSpacingWidth;
 		this.tileSpacingHeight = tileSpacingHeight;
@@ -59,7 +59,7 @@ class Tilemap extends Canvas
 
 		// initialize map
 		_tile = new Rectangle(0, 0, tileWidth, tileHeight);
-		_map = new Array2D();
+		_map = new Array<Array<Int>>();
 		for (y in 0..._rows)
 		{
 			_map[y] = new Array<Int>();
@@ -70,31 +70,15 @@ class Tilemap extends Canvas
 		}
 
 		// load the tileset graphic
-		if (Std.is(tileset, TileAtlas))
+		switch (tileset.type)
 		{
-			blit = false;
-			_atlas = cast(tileset, TileAtlas);
-		}
-		else
-		{
-			if (HXP.renderMode == RenderMode.HARDWARE)
-			{
+			case Left(bd):
+				blit = true;
+				_set = bd;
+			case Right(atlas):
 				blit = false;
-				_atlas = new TileAtlas(tileset, tileWidth, tileHeight, tileSpacingWidth, tileSpacingHeight);
-			}
-			else
-			{
-				if (Std.is(tileset, BitmapData))
-				{
-					blit = true;
-					_set = tileset;
-				}
-				else
-				{
-					blit = true;
-					_set = HXP.getBitmap(tileset);
-				}
-			}
+				_atlas = atlas;
+				atlas.prepare(tileWidth, tileHeight, tileSpacingWidth, tileSpacingHeight);
 		}
 
 		if (_set == null && _atlas == null)
@@ -111,13 +95,15 @@ class Tilemap extends Canvas
 			_setRows = Std.int(_atlas.height / tileHeight);
 		}
 		_setCount = _setColumns * _setRows;
+
+		smooth = (HXP.stage.quality != LOW);
 	}
 
 	/**
 	 * Sets the index of the tile at the position.
 	 * @param	column		Tile column.
 	 * @param	row			Tile row.
-	 * @param	index		Tile index.
+	 * @param	index		Tile index from the tileset to show. (Or -1 to show the tile as blank.)
 	 */
 	public function setTile(column:Int, row:Int, index:Int = 0)
 	{
@@ -130,11 +116,20 @@ class Tilemap extends Canvas
 		column %= _columns;
 		row %= _rows;
 		_map[row][column] = index;
+
 		if (blit)
 		{
-			_tile.x = (index % _setColumns) * (_tile.width + tileSpacingWidth);
-			_tile.y = Std.int(index / _setColumns) * (_tile.height + tileSpacingHeight);
-			draw(Std.int(column * _tile.width), Std.int(row * _tile.height), _set, _tile);
+			if (!_opaqueTiles || index < 0)
+			{
+				_tile.x = column * _tile.width;
+				_tile.y = row * _tile.height;
+				fill(_tile, 0, 0); // erase tile
+			}
+			if (index >= 0)
+			{
+				updateTileRect(index);
+				draw(column * _tile.width, row * _tile.height, _set, _tile); // draw tile
+			}
 		}
 	}
 
@@ -145,20 +140,7 @@ class Tilemap extends Canvas
 	 */
 	public function clearTile(column:Int, row:Int)
 	{
-		if (usePositions)
-		{
-			column = Std.int(column / _tile.width);
-			row = Std.int(row / _tile.height);
-		}
-		column %= _columns;
-		row %= _rows;
-		_map[row][column] = -1;
-		if (blit)
-		{
-			_tile.x = column * _tile.width;
-			_tile.y = row * _tile.height;
-			fill(_tile, 0, 0);
-		}
+		setTile(column, row, -1);
 	}
 
 	/**
@@ -206,10 +188,10 @@ class Tilemap extends Canvas
 			while (column < r)
 			{
 				setTile(column, row, index);
-				column ++;
+				column++;
 			}
 			column = c;
-			row ++;
+			row++;
 		}
 		usePositions = u;
 	}
@@ -242,10 +224,10 @@ class Tilemap extends Canvas
 			while (column < r)
 			{
 				clearTile(column, row);
-				column ++;
+				column++;
 			}
 			column = c;
-			row ++;
+			row++;
 		}
 		usePositions = u;
 	}
@@ -256,19 +238,15 @@ class Tilemap extends Canvas
 	 *
 	 * @param	array	The array to load from.
 	 */
-	public function loadFrom2DArray(array:Array2D):Void
+	public function loadFrom2DArray(array:Array<Array<Int>>):Void
 	{
-		if (blit)
+		for (y in 0...array.length)
 		{
-			for (y in 0...array.length)
-			 {
-				for (x in 0...array[0].length)
-				{
-					setTile(x, y, array[y][x]);
-				}
-			 }
+			for (x in 0...array[y].length)
+			{
+				setTile(x, y, array[y][x]);
+			}
 		}
-		_map = array;
 	}
 
 	/**
@@ -290,11 +268,10 @@ class Tilemap extends Canvas
 			cols = col.length;
 			for (x in 0...cols)
 			{
-				if (col[x] == '') continue;
-
-				if (blit)
+				if (col[x] != '')
+				{
 					setTile(x, y, Std.parseInt(col[x]));
-				_map[y][x] = Std.parseInt(col[x]);
+				}
 			}
 		}
 	}
@@ -323,7 +300,7 @@ class Tilemap extends Canvas
 	}
 
 	/**
-	 * Gets the index of a tile, based on its column and row in the tileset.
+	 * Calculates the index of a tile, based on its column and row in the tileset.
 	 * @param	tilesColumn		Tileset column.
 	 * @param	tilesRow		Tileset row.
 	 * @return	Index of the tile.
@@ -331,6 +308,26 @@ class Tilemap extends Canvas
 	public inline function getIndex(tilesColumn:Int, tilesRow:Int):Int
 	{
 		return (tilesRow % _setRows) * _setColumns + (tilesColumn % _setColumns);
+	}
+
+	/**
+	 * Calculates the column of a tile, based on its index in the tileset.
+	 * @param	index		Index of the tile.
+	 * @return	Column (x) of the tile.
+	 */
+	public inline function getX(index:Int):Int
+	{
+		return index % _setColumns;
+	}
+
+	/**
+	 * Calculates the row of a tile, based on its index in the tileset.
+	 * @param	index		Index of the tile.
+	 * @return	Row (y) of the tile.
+	 */
+	public inline function getY(index:Int):Int
+	{
+		return Std.int(index / _setColumns);
 	}
 
 	/**
@@ -425,31 +422,34 @@ class Tilemap extends Canvas
 		{
 			while (y < h)
 			{
-				while (x < w) clearTile(x ++, y);
+				while (x < w) clearTile(x++, y);
 				x = Std.int(rect.x);
-				y ++;
+				y++;
 			}
 		}
 		else
 		{
 			while (y < h)
 			{
-				while (x < w) updateTile(x ++, y);
+				while (x < w) updateTile(x++, y);
 				x = Std.int(rect.x);
-				y ++;
+				y++;
 			}
 		}
 		usePositions = u;
 	}
 
+	@:dox(hide)
 	override public function renderAtlas(layer:Int, point:Point, camera:Point)
 	{
 		// determine drawing location
 		_point.x = point.x + x - camera.x * scrollX;
 		_point.y = point.y + y - camera.y * scrollY;
 
-		var scalex:Float = HXP.screen.fullScaleX, scaley:Float = HXP.screen.fullScaleY,
-			tw:Int = Math.ceil(tileWidth), th:Int = Math.ceil(tileHeight);
+		var scalex:Float = HXP.screen.fullScaleX,
+			scaley:Float = HXP.screen.fullScaleY,
+			tw:Int = Std.int(tileWidth),
+			th:Int = Std.int(tileHeight);
 
 		var scx = scale * scaleX,
 			scy = scale * scaleY;
@@ -470,30 +470,69 @@ class Tilemap extends Canvas
 		if (starty < 0) starty = 0;
 		if (desty > _rows) desty = _rows;
 
-		var wx:Float, sx:Float = (_point.x + startx * tw * scx) * scalex,
-			wy:Float = (_point.y + starty * th * scy) * scaley,
+		var wx:Float, sx:Float = (startx * tw * scx) * scalex,
+			wy:Float = (starty * th * scy) * scaley,
 			stepx:Float = tw * scx * scalex,
 			stepy:Float = th * scy * scaley,
 			tile:Int = 0;
 
-		// adjust scale to fill gaps
-		scx = Math.ceil(stepx) / tileWidth;
-		scy = Math.ceil(stepy) / tileHeight;
-
+		_point.x = Std.int(_point.x * scalex);
+		_point.y = Std.int(_point.y * scaley);
 		for (y in starty...desty)
 		{
 			wx = sx;
+			// ensure no vertical overlap between this and next tile
+			scy = (Math.floor(wy + stepy) - Math.floor(wy)) / tileHeight;
+
 			for (x in startx...destx)
 			{
 				tile = _map[y % _rows][x % _columns];
 				if (tile >= 0)
 				{
-					_atlas.prepareTile(tile, Std.int(wx), Std.int(wy), layer, scx, scy, 0, _red, _green, _blue, alpha);
+					// ensure no horizontal overlap between this and next tile
+					scx = (Math.floor(wx + stepx) - Math.floor(wx)) / tileWidth;
+
+					updateTileRect(tile);
+					_atlas.prepareTile(_tile, Math.floor(_point.x + wx), Math.floor(_point.y + wy), layer, scx, scy, 0, _red, _green, _blue, alpha, smooth);
 				}
 				wx += stepx;
 			}
 			wy += stepy;
 		}
+	}
+
+	/**
+	 * Create a Grid object from this tilemap.
+	 * @param solidTiles	Array of tile indexes that should be solid.
+	 * @param grid			A grid to use instead of creating a new one, the function won't check if the grid is of correct dimension.
+	 * @return The grid with a tile solid if the tile index is in [solidTiles].
+	*/
+	public function createGrid(solidTiles:Array<Int>, ?grid:Grid)
+	{
+		if (grid == null)
+		{
+			grid = new Grid(width, height, Std.int(_tile.width), Std.int(_tile.height));
+		}
+
+		for (y in 0..._rows)
+		{
+			for (x in 0..._columns)
+			{
+				if (solidTiles.indexOf(getTile(x, y)) != -1)
+				{
+					grid.setTile(x, y, true);
+				}
+			}
+		}
+
+		return grid;
+	}
+
+	/** @private Sets the _tile convenience rect to the x/y position of the supplied tile. Assumes _tile has the correct tile width/height set. Respects tile spacing. */
+	private inline function updateTileRect(index:Int)
+	{
+		_tile.x = getX(index) * (_tile.width + tileSpacingWidth);
+		_tile.y = getY(index) * (_tile.height + tileSpacingHeight);
 	}
 
 	/** @private Used by shiftTiles to update a tile from the tilemap. */
@@ -506,13 +545,13 @@ class Tilemap extends Canvas
 	 * The tile width.
 	 */
 	public var tileWidth(get, never):Int;
-	private inline function get_tileWidth():Int { return Std.int(_tile.width); }
+	private inline function get_tileWidth():Int return Std.int(_tile.width); 
 
 	/**
 	 * The tile height.
 	 */
 	public var tileHeight(get, never):Int;
-	private inline function get_tileHeight():Int { return Std.int(_tile.height); }
+	private inline function get_tileHeight():Int return Std.int(_tile.height); 
 
 	/**
 	 * The tile horizontal spacing of tile.
@@ -528,26 +567,37 @@ class Tilemap extends Canvas
 	 * How many tiles the tilemap has.
 	 */
 	public var tileCount(get, never):Int;
-	private inline function get_tileCount():Int { return _setCount; }
+	private inline function get_tileCount():Int return _setCount; 
 
 	/**
 	 * How many columns the tilemap has.
 	 */
 	public var columns(get, null):Int;
-	private inline function get_columns():Int { return _columns; }
+	private inline function get_columns():Int return _columns; 
 
 	/**
 	 * How many rows the tilemap has.
 	 */
 	public var rows(get, null):Int;
-	private inline function get_rows():Int { return _rows; }
+	private inline function get_rows():Int return _rows; 
+
+	/**
+	 * If false, whenever you call setTile or one of the load methods, clears the affected Tilemap areas before redrawing.
+	 * Only used on Flash targets and with tilesets that contain transparency.
+	 */
+	public var opaqueTiles(get, null):Bool;
+	private inline function get_opaqueTiles():Bool return _opaqueTiles; 
+
+	/** Default value: false if HXP.stage.quality is LOW, true otherwise. */
+	public var smooth:Bool;
 
 	// Tilemap information.
-	private var _map:Array2D;
+	private var _map:Array<Array<Int>>;
 	private var _columns:Int;
 	private var _rows:Int;
 
 	// Tileset information.
+	private var _opaqueTiles:Bool;
 	private var _set:BitmapData;
 	private var _atlas:TileAtlas;
 	private var _setColumns:Int;

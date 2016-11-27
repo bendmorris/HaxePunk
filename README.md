@@ -1,3 +1,9 @@
+[![Build Status](https://img.shields.io/travis/HaxePunk/HaxePunk/dev.svg?style=flat)](https://travis-ci.org/HaxePunk/HaxePunk)
+[![Code Climate](https://codeclimate.com/github/HaxePunk/HaxePunk/badges/gpa.svg)](https://codeclimate.com/github/HaxePunk/HaxePunk)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
+[![Haxelib](https://img.shields.io/github/tag/haxepunk/haxepunk.svg?style=flat&label=haxelib)](http://lib.haxe.org/p/haxepunk)
+[![Join the chat at https://gitter.im/HaxePunk/HaxePunk](https://badges.gitter.im/HaxePunk/HaxePunk.svg)](https://gitter.im/HaxePunk/HaxePunk?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 # HaxePunk
 
 A Haxe port of the [FlashPunk](http://useflashpunk.net) AS3 library. There are a few additions/differences from the original.
@@ -8,11 +14,9 @@ A Haxe port of the [FlashPunk](http://useflashpunk.net) AS3 library. There are a
 * Joystick and multi-touch input
 * Texture atlases for native targets (supports TexturePacker xml)
 
-[![Build Status](https://travis-ci.org/HaxePunk/HaxePunk.png?branch=master)](https://travis-ci.org/HaxePunk/HaxePunk)
-
 ## Release build
 
-First, make sure you have [Haxe](http://haxe.org) 3.0 or higher, we recommend you to update to Haxe 3.1 if you haven't already. Then execute the following commands below to get started with your first HaxePunk project.
+First, make sure you have [Haxe](http://haxe.org) 3.0 or higher, we recommend you to update to Haxe 3.2 if you haven't already. Then execute the following commands below to get started with your first HaxePunk project.
 If you are using Haxe 2 the last version supporting it was [v2.3.0](https://github.com/HaxePunk/HaxePunk/releases/tag/v2.3.0) `haxelib install HaxePunk 2.3.0`.
 
 ```bash
@@ -23,26 +27,36 @@ haxelib run HaxePunk new MyProject # creates a new project
 
 ## Development build
 
-You need to have ant installed to build a development version of HaxePunk. Make sure you set a default program for swf files to view the debug output. You will also need a C++ compiler for native builds (Xcode, Visual Studio, g++).
+Make sure you set a default program for swf files to view the debug output. You will also need a C++ compiler for native builds (Xcode, Visual Studio, g++).
 
 ```bash
 git clone https://github.com/HaxePunk/HaxePunk.git
-ant
+make
 ```
 
-This will install a dev version of HaxePunk through haxelib, run unit tests, and build an example project for flash/neko/native. If you fix an issue, feel free to create a pull request.
+This will build documentation, run unit tests, and run the example project. If you fix an issue, feel free to create a pull request.
 
-Generating documentation is just as simple. Run the commands below to create a new set of docs with haxedoc
-The documentation will be located in doc/docs/, simply open doc/docs/index.html with your web browser to see the doc.
+If you've cloned locally, you can set your local repo as a development directory accessible through Haxelib:
 
 ```bash
-ant doc
+git clone https://github.com/HaxePunk/HaxePunk.git
+haxelib dev HaxePunk HaxePunk/
+```
+
+To disable the dev directory for HaxePunk simply run the command `haxelib dev HaxePunk`. Notice there is no third argument passed.
+
+If you just want to install the latest dev version from Git, you can also do this with haxelib:
+
+```bash
+haxelib git HaxePunk https://github.com/HaxePunk/HaxePunk.git dev
 ```
 
 ## Have questions or looking to get involved?
 
 There are a few ways you can get involved with HaxePunk.
 
+* The development roadmap is available on [Trello](https://trello.com/b/WZrfACWS/haxepunk-development).
+* Come chat with us on [Gitter](https://gitter.im/HaxePunk/HaxePunk).
 *	Drop by the [HaxePunk forum](http://forum.haxepunk.com) to ask a question or show off what you've created.
 *	Create an issue or pull request or take part in the discussion.
 *	Follow us on Twitter: [@HaxePunk](https://twitter.com/intent/user?screen_name=HaxePunk)
@@ -55,7 +69,7 @@ There are a few ways you can get involved with HaxePunk.
 
 ## MIT License
 
-Copyright (C) 2012-2014 Matt Tuttle
+Copyright (C) 2012-2016 HaxePunk contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

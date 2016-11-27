@@ -1,6 +1,6 @@
 package com.haxepunk.graphics.atlas;
 
-import flash.display.Sprite;
+import com.haxepunk.graphics.atlas.AtlasData;
 import flash.geom.Rectangle;
 
 class Atlas
@@ -15,17 +15,17 @@ class Atlas
 	 * The width of this atlas
 	 */
 	public var width(get, never):Int;
-	private function get_width():Int { return _data.width; }
+	private function get_width():Int return _data.width; 
 
 	/**
 	 * The height of this atlas
 	 */
 	public var height(get, never):Int;
-	private function get_height():Int { return _data.height; }
+	private function get_height():Int return _data.height; 
 
-	private function new(source:Dynamic)
+	private function new(source:AtlasDataType)
 	{
-		_data = AtlasData.create(source);
+		_data = source;
 	}
 
 	/**
@@ -33,9 +33,9 @@ class Atlas
 	 * @param	source	The image to use
 	 * @return	An AtlasRegion containing the whole image
 	 */
-	public static function loadImageAsRegion(source:Dynamic):AtlasRegion
+	public static function loadImageAsRegion(source:AtlasDataType):AtlasRegion
 	{
-		var data = AtlasData.create(source);
+		var data:AtlasData = source;
 		return data.createRegion(new Rectangle(0, 0, data.width, data.height));
 	}
 
@@ -49,7 +49,7 @@ class Atlas
 
 	/**
 	 * Prepares tile data for rendering
-	 * @param	tile	The tile index of the tilesheet
+	 * @param  	rect   	The source rectangle to draw
 	 * @param	x		The x-axis location to draw the tile
 	 * @param	y		The y-axis location to draw the tile
 	 * @param	layer	The layer to draw on
@@ -61,18 +61,18 @@ class Atlas
 	 * @param	blue	A blue tint value
 	 * @param	alpha	The tile's opacity
 	 */
-	public inline function prepareTile(tile:Int, x:Float, y:Float, layer:Int,
+	public inline function prepareTile(rect:Rectangle, x:Float, y:Float, layer:Int,
 		scaleX:Float, scaleY:Float, angle:Float,
-		red:Float, green:Float, blue:Float, alpha:Float)
+		red:Float, green:Float, blue:Float, alpha:Float, ?smooth:Bool)
 	{
-		_data.prepareTile(tile, x, y, layer, scaleX, scaleY, angle, red, green, blue, alpha);
+		_data.prepareTile(rect, x, y, layer, scaleX, scaleY, angle, red, green, blue, alpha, smooth);
 	}
 
 	/**
 	 * How many Atlases are active.
 	 */
 	// public static var count(get, never):Int;
-	// private static inline function get_count():Int { return _atlases.length; }
+	// private static inline function get_count():Int return _atlases.length; 
 
 	private var _data:AtlasData;
 }

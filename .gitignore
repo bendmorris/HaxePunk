@@ -4,7 +4,13 @@
 *.n
 *.build
 *.hash
+*.docset/
 build-test/
+libs/
+bin
+log.txt
+tests/report
+.temp
 
 # OS specific files
 .DS_Store

@@ -2,38 +2,52 @@ package com.haxepunk;
 
 import flash.display.BitmapData;
 import flash.geom.Point;
-import flash.geom.Rectangle;
-import com.haxepunk.graphics.Image;
 import com.haxepunk.graphics.Graphiclist;
+import com.haxepunk.ds.Either;
 
 /**
- * Main game Entity class updated by Scene.
+ * Abstract representing either a `String` or a `Array<String>`.
+ * 
+ * Conversion is automatic, no need to use this.
  */
+abstract SolidType(Either<String, Array<String>>)
+{
+	@:dox(hide) public inline function new( e:Either<String, Array<String>> ) this = e;
+	@:dox(hide) public var type(get, never):Either<String, Array<String>>;
+	@:to inline function get_type() return this;
+	@:from static function fromLeft(v:String) return new SolidType(Left(v));
+	@:from static function fromRight(v:Array<String>) return new SolidType(Right(v));
+}
+
+/**
+ * Main game Entity class updated by `Scene`.
+ */
+@:allow(com.haxepunk.Mask)
 @:allow(com.haxepunk.Scene)
 class Entity extends Tweener
 {
 	/**
 	 * If the Entity should render.
 	 */
-	public var visible:Bool;
+	public var visible:Bool = true;
 
 	/**
 	 * If the Entity should respond to collision checks.
 	 */
-	public var collidable:Bool;
+	public var collidable:Bool = true;
 
 	/**
 	 * X position of the Entity in the Scene.
 	 */
-	@:isVar public var x(get, set):Float;
-	private inline function get_x():Float
+	@:isVar public var x(get, set):Float = 0;
+	private function get_x():Float
 	{
 		if (followCamera)
 			return x + HXP.camera.x;
 		else
 			return x;
 	}
-	private inline function set_x(v:Float):Float
+	private function set_x(v:Float):Float
 	{
 		return x = v;
 	}
@@ -41,15 +55,15 @@ class Entity extends Tweener
 	/**
 	 * Y position of the Entity in the Scene.
 	 */
-	@:isVar public var y(get, set):Float;
-	private inline function get_y():Float
+	@:isVar public var y(get, set):Float = 0;
+	private function get_y():Float
 	{
 		if (followCamera)
 			return y + HXP.camera.y;
 		else
 			return y;
 	}
-	private inline function set_y(v:Float):Float
+	private function set_y(v:Float):Float
 	{
 		return y = v;
 	}
@@ -57,27 +71,31 @@ class Entity extends Tweener
 	/**
 	 * If the entity should follow the camera.
 	 */
-	public var followCamera:Bool;
+	public var followCamera:Bool = false;
 
 	/**
 	 * Width of the Entity's hitbox.
 	 */
-	public var width:Int;
+	@:isVar public var width(get, set):Int = 0;
+	function get_width() return width;
+	function set_width(w:Int) return width = w;
 
 	/**
 	 * Height of the Entity's hitbox.
 	 */
-	public var height:Int;
+	@:isVar public var height(get, set):Int = 0;
+	function get_height() return height;
+	function set_height(h:Int) return height = h;
 
 	/**
 	 * X origin of the Entity's hitbox.
 	 */
-	public var originX:Int;
+	public var originX:Int = 0;
 
 	/**
 	 * Y origin of the Entity's hitbox.
 	 */
-	public var originY:Int;
+	public var originY:Int = 0;
 
 	/**
 	 * The BitmapData target to draw the Entity to. Leave as null to render to the current screen buffer (default).
@@ -85,18 +103,15 @@ class Entity extends Tweener
 	public var renderTarget:BitmapData;
 
 	/**
-	 * Constructor. Can be usd to place the Entity and assign a graphic and mask.
+	 * Constructor. Can be used to place the Entity and assign a graphic and mask.
 	 * @param	x			X position to place the Entity.
 	 * @param	y			Y position to place the Entity.
 	 * @param	graphic		Graphic to assign to the Entity.
 	 * @param	mask		Mask to assign to the Entity.
 	 */
-	public function new(x:Float = 0, y:Float = 0, graphic:Graphic = null, mask:Mask = null)
+	public function new(x:Float = 0, y:Float = 0, ?graphic:Graphic, ?mask:Mask)
 	{
 		super();
-		visible = true;
-		collidable = true;
-		followCamera = false;
 		this.x = x;
 		this.y = y;
 
@@ -114,24 +129,29 @@ class Entity extends Tweener
 
 		if (graphic != null) this.graphic = graphic;
 		if (mask != null) this.mask = mask;
-		HITBOX.assignTo(this);
+		HITBOX.parent = this;
 		_class = Type.getClassName(Type.getClass(this));
 	}
 
 	/**
 	 * Override this, called when the Entity is added to a Scene.
 	 */
-	public function added():Void { }
+	public function added():Void {}
 
 	/**
 	 * Override this, called when the Entity is removed from a Scene.
 	 */
-	public function removed():Void { }
+	public function removed():Void {}
+
+	/**
+	 * Override this, called when the Scene is resized.
+	 */
+	public function resized():Void {}
 
 	/**
 	 * Updates the Entity.
 	 */
-	override public function update():Void { }
+	override public function update():Void {}
 
 	/**
 	 * Renders the Entity. If you override this for special behaviour,
@@ -171,15 +191,15 @@ class Entity extends Tweener
 	{
 		if (_scene == null) return null;
 
-		var e:Entity = _scene._typeFirst.get(type);
-		if (!collidable || e == null) return null;
+		var entities = _scene.entitiesForType(type);
+		if (!collidable || entities == null) return null;
 
 		_x = this.x; _y = this.y;
 		this.x = x; this.y = y;
 
 		if (_mask == null)
 		{
-			while (e != null)
+			for (e in entities)
 			{
 				if (e.collidable && e != this
 					&& x - originX + width > e.x - e.originX
@@ -193,12 +213,11 @@ class Entity extends Tweener
 						return e;
 					}
 				}
-				e = e._typeNext;
 			}
 		}
 		else
 		{
-			while (e != null)
+			for (e in entities)
 			{
 				if (e.collidable && e != this
 					&& x - originX + width > e.x - e.originX
@@ -212,7 +231,6 @@ class Entity extends Tweener
 						return e;
 					}
 				}
-				e = e._typeNext;
 			}
 		}
 		this.x = _x; this.y = _y;
@@ -226,26 +244,21 @@ class Entity extends Tweener
 	 * @param	y			Virtual y position to place this Entity.
 	 * @return	The first Entity collided with, or null if none were collided.
 	 */
-	public function collideTypes(types:Dynamic, x:Float, y:Float):Entity
+	public function collideTypes(types:SolidType, x:Float, y:Float):Entity
 	{
 		if (_scene == null) return null;
 
-		if (Std.is(types, String))
+		switch (types.type)
 		{
-			return collide(types, x, y);
-		}
-		else
-		{
-			var a:Array<String> = cast types;
-			if (a != null)
-			{
+			case Left(s):
+				return collide(s, x, y);
+			case Right(a):
 				var e:Entity;
 				for (type in a)
 				{
 					e = collide(type, x, y);
 					if (e != null) return e;
 				}
-			}
 		}
 
 		return null;
@@ -369,8 +382,8 @@ class Entity extends Tweener
 	{
 		if (_scene == null) return;
 
-		var e:Entity = _scene._typeFirst.get(type);
-		if (!collidable || e == null) return;
+		var entities = _scene.entitiesForType(type);
+		if (!collidable || entities == null) return;
 
 		_x = this.x; _y = this.y;
 		this.x = x; this.y = y;
@@ -378,7 +391,7 @@ class Entity extends Tweener
 
 		if (_mask == null)
 		{
-			while (e != null)
+			for (e in entities)
 			{
 				e = cast e;
 				if (e.collidable && e != this
@@ -389,12 +402,11 @@ class Entity extends Tweener
 				{
 					if ((untyped e._mask) == null || (untyped e._mask).collide(HITBOX)) array[n++] = cast e;
 				}
-				e = e._typeNext;
 			}
 		}
 		else
 		{
-			while (e != null)
+			for (e in entities)
 			{
 				e = cast e;
 				if (e.collidable && e != this
@@ -405,7 +417,6 @@ class Entity extends Tweener
 				{
 					if (_mask.collide((untyped e._mask) != null ? (untyped e._mask) : (untyped e.HITBOX))) array[n++] = cast e;
 				}
-				e = e._typeNext;
 			}
 		}
 		this.x = _x; this.y = _y;
@@ -442,10 +453,10 @@ class Entity extends Tweener
 	}
 
 	/**
-	 * The World object is deprecated
+	 * The world object is deprecated, use scene instead.
 	 */
 	@:deprecated public var world(get, never):Scene;
-	private inline function get_world():Scene { return _scene; }
+	private inline function get_world():Scene return _scene;
 
 	/**
 	 * The Scene object this Entity has been added to.
@@ -460,55 +471,55 @@ class Entity extends Tweener
 	 * Half the Entity's width.
 	 */
 	public var halfWidth(get, null):Float;
-	private inline function get_halfWidth():Float { return width / 2; }
+	private inline function get_halfWidth():Float return width / 2;
 
 	/**
 	 * Half the Entity's height.
 	 */
 	public var halfHeight(get, null):Float;
-	private inline function get_halfHeight():Float { return height / 2; }
+	private inline function get_halfHeight():Float return height / 2;
 
 	/**
 	 * The center x position of the Entity's hitbox.
 	 */
 	public var centerX(get, null):Float;
-	private inline function get_centerX():Float { return x - originX + width / 2; }
+	private inline function get_centerX():Float return x - originX + width / 2;
 
 	/**
 	 * The center y position of the Entity's hitbox.
 	 */
 	public var centerY(get, null):Float;
-	private inline function get_centerY():Float { return y - originY + height / 2; }
+	private inline function get_centerY():Float return y - originY + height / 2;
 
 	/**
 	 * The leftmost position of the Entity's hitbox.
 	 */
 	public var left(get, null):Float;
-	private inline function get_left():Float { return x - originX; }
+	private inline function get_left():Float return x - originX;
 
 	/**
 	 * The rightmost position of the Entity's hitbox.
 	 */
 	public var right(get, null):Float;
-	private inline function get_right():Float { return x - originX + width; }
+	private inline function get_right():Float return x - originX + width;
 
 	/**
 	 * The topmost position of the Entity's hitbox.
 	 */
 	public var top(get, null):Float;
-	private inline function get_top():Float { return y - originY; }
+	private inline function get_top():Float return y - originY;
 
 	/**
 	 * The bottommost position of the Entity's hitbox.
 	 */
 	public var bottom(get, null):Float;
-	private inline function get_bottom():Float { return y - originY + height; }
+	private inline function get_bottom():Float return y - originY + height;
 
 	/**
 	 * The rendering layer of this Entity. Higher layers are rendered first.
 	 */
 	public var layer(get, set):Int;
-	private inline function get_layer():Int { return _layer; }
+	private inline function get_layer():Int return _layer;
 	private function set_layer(value:Int):Int
 	{
 		if (_layer == value) return _layer;
@@ -527,7 +538,7 @@ class Entity extends Tweener
 	 * The collision type, used for collision checking.
 	 */
 	public var type(get, set):String;
-	private inline function get_type():String { return _type; }
+	private inline function get_type():String return _type;
 	private function set_type(value:String):String
 	{
 		if (_type == value) return _type;
@@ -547,13 +558,13 @@ class Entity extends Tweener
 	 * not assigned, collision checks will use the Entity's hitbox by default.
 	 */
 	public var mask(get, set):Mask;
-	private inline function get_mask():Mask { return _mask; }
+	private inline function get_mask():Mask return _mask;
 	private function set_mask(value:Mask):Mask
 	{
 		if (_mask == value) return value;
-		if (_mask != null) _mask.assignTo(null);
+		if (_mask != null) _mask.parent = null;
 		_mask = value;
-		if (value != null) _mask.assignTo(this);
+		if (value != null) _mask.parent = this;
 		return _mask;
 	}
 
@@ -561,7 +572,7 @@ class Entity extends Tweener
 	 * Graphical component to render to the screen.
 	 */
 	public var graphic(get, set):Graphic;
-	private inline function get_graphic():Graphic { return _graphic; }
+	private inline function get_graphic():Graphic return _graphic;
 	private function set_graphic(value:Graphic):Graphic
 	{
 		if (_graphic == value) return value;
@@ -569,8 +580,11 @@ class Entity extends Tweener
 		return _graphic;
 	}
 
+	/**
+	 * An optional name for the entity.
+	 */
 	public var name(get, set):String;
-	private inline function get_name():String { return _name; }
+	private inline function get_name():String return _name;
 	private function set_name(value:String):String
 	{
 		if (_name == value) return _name;
@@ -724,7 +738,7 @@ class Entity extends Tweener
 	 * @param	solidType	An optional collision type to stop flush against upon collision.
 	 * @param	sweep		If sweeping should be used (prevents fast-moving objects from going through solidType).
 	 */
-	public function moveBy(x:Float, y:Float, solidType:Dynamic = null, sweep:Bool = false)
+	public function moveBy(x:Float, y:Float, ?solidType:SolidType, sweep:Bool = false):Void
 	{
 		_moveX += x;
 		_moveY += y;
@@ -792,7 +806,7 @@ class Entity extends Tweener
 	 * @param	solidType	An optional collision type to stop flush against upon collision.
 	 * @param	sweep		If sweeping should be used (prevents fast-moving objects from going through solidType).
 	 */
-	public inline function moveTo(x:Float, y:Float, solidType:Dynamic = null, sweep:Bool = false)
+	public inline function moveTo(x:Float, y:Float, ?solidType:SolidType, sweep:Bool = false)
 	{
 		moveBy(x - this.x, y - this.y, solidType, sweep);
 	}
@@ -805,7 +819,7 @@ class Entity extends Tweener
 	 * @param	solidType	An optional collision type to stop flush against upon collision.
 	 * @param	sweep		If sweeping should be used (prevents fast-moving objects from going through solidType).
 	 */
-	public inline function moveTowards(x:Float, y:Float, amount:Float, solidType:Dynamic = null, sweep:Bool = false)
+	public inline function moveTowards(x:Float, y:Float, amount:Float, ?solidType:SolidType, sweep:Bool = false)
 	{
 		_point.x = x - this.x;
 		_point.y = y - this.y;
@@ -823,14 +837,17 @@ class Entity extends Tweener
 	 * @param	solidType	An optional collision type to stop flush against upon collision.
 	 * @param	sweep		If sweeping should be used (prevents fast-moving objects from going through solidType).
 	 */
-	public inline function moveAtAngle(angle:Float, amount:Float, solidType:Dynamic = null, sweep:Bool = false):Void
+	public inline function moveAtAngle(angle:Float, amount:Float, ?solidType:SolidType, sweep:Bool = false):Void
 	{
 		angle *= HXP.RAD;
 		moveBy(Math.cos(angle) * amount, Math.sin(angle) * amount, solidType, sweep);
 	}
 
 	/**
-	 * When you collide with an Entity on the x-axis with moveTo() or moveBy().
+	 * When you collide with an Entity on the x-axis with moveTo() or moveBy()
+	 * the engine call this function. Override it to detect and change the
+	 * behaviour of collisions.
+	 *
 	 * @param	e		The Entity you collided with.
 	 *
 	 * @return	If there was a collision.
@@ -841,7 +858,10 @@ class Entity extends Tweener
 	}
 
 	/**
-	 * When you collide with an Entity on the y-axis with moveTo() or moveBy().
+	 * When you collide with an Entity on the y-axis with moveTo() or moveBy()
+	 * the engine call this function. Override it to detect and change the
+	 * behaviour of collisions.
+	 *
 	 * @param	e		The Entity you collided with.
 	 *
 	 * @return	If there was a collision.
@@ -891,28 +911,23 @@ class Entity extends Tweener
 	private var _class:String;
 	private var _scene:Scene;
 	private var _type:String;
-	private var _layer:Int;
+	private var _layer:Int = 0;
 	private var _name:String;
 
-	private var _updatePrev:Entity;
-	private var _updateNext:Entity;
-	private var _renderPrev:Entity;
-	private var _renderNext:Entity;
-
-	private var _typePrev:Entity;
-	private var _typeNext:Entity;
 	private var _recycleNext:Entity;
 
 	// Collision information.
 	private var HITBOX:Mask;
 	private var _mask:Mask;
-	private var _x:Float;
-	private var _y:Float;
-	private var _moveX:Float;
-	private var _moveY:Float;
+	private var _x:Float = 0;
+	private var _y:Float = 0;
+	private var _moveX:Float = 0;
+	private var _moveY:Float = 0;
 
 	// Rendering information.
 	private var _graphic:Graphic;
 	private var _point:Point;
 	private var _camera:Point;
+
+	static var _EMPTY:Entity = new Entity();
 }

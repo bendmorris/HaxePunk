@@ -1,14 +1,11 @@
 package com.haxepunk.graphics;
 
-import com.haxepunk.HXP;
-import com.haxepunk.Graphic;
-import com.haxepunk.graphics.atlas.Atlas;
-import com.haxepunk.graphics.atlas.AtlasRegion;
-
 import flash.display.BitmapData;
-import flash.display.DisplayObject;
 import flash.geom.Point;
 import flash.geom.Rectangle;
+import com.haxepunk.HXP;
+import com.haxepunk.Graphic;
+import com.haxepunk.graphics.atlas.AtlasRegion;
 
 /**
  * A simple non-transformed, non-animated graphic.
@@ -21,7 +18,7 @@ class Stamp extends Graphic
 	 * @param	x			X offset.
 	 * @param	y			Y offset.
 	 */
-	public function new(source:Dynamic, x:Int = 0, y:Int = 0)
+	public function new(source:ImageType, x:Int = 0, y:Int = 0)
 	{
 		super();
 
@@ -30,52 +27,21 @@ class Stamp extends Graphic
 		this.y = y;
 
 		// set the graphic
-		if (Std.is(source, AtlasRegion))
+		switch (source.type)
 		{
-			setAtlasRegion(source);
+			case Left(bitmap):
+				blit = true;
+				_sourceRect = bitmap.rect;
+				_source = bitmap;
+			case Right(region):
+				blit = false;
+				_region = region;
+				_sourceRect = new Rectangle(0, 0, _region.width, _region.height);
 		}
-		else
-		{
-			if (HXP.renderMode == RenderMode.HARDWARE)
-			{
-				setAtlasRegion(Atlas.loadImageAsRegion(source));
-			}
-			else
-			{
-				if (Std.is(source, BitmapData))
-				{
-					setBitmapSource(source);
-				}
-				else
-				{
-					setBitmapSource(HXP.getBitmap(source));
-				}
-			}
-		}
-	}
-
-	private inline function setAtlasRegion(region:AtlasRegion)
-	{
-		blit = false;
-		_region = region;
-
-		if (_region == null)
-			throw "Invalid source image.";
-
-		_sourceRect = new Rectangle(0, 0, _region.width, _region.height);
-	}
-
-	private inline function setBitmapSource(bitmap:BitmapData)
-	{
-		if (bitmap == null)
-			throw "Invalid source image.";
-
-		blit = true;
-		_sourceRect = bitmap.rect;
-		_source = bitmap;
 	}
 
 	/** @private Renders the Graphic. */
+	@:dox(hide)
 	override public function render(target:BitmapData, point:Point, camera:Point)
 	{
 		_point.x = point.x + x - camera.x * scrollX;
@@ -84,6 +50,7 @@ class Stamp extends Graphic
 		target.copyPixels(_source, _sourceRect, _point, null, null, true);
 	}
 
+	@:dox(hide)
 	override public function renderAtlas(layer:Int, point:Point, camera:Point)
 	{
 		_point.x = point.x + x - camera.x * scrollX;
@@ -97,13 +64,13 @@ class Stamp extends Graphic
 	 * Width of the image.
 	 */
 	public var width(get, never):Int;
-	private function get_width():Int { return Std.int(blit ? _source.width : _region.width); }
+	private function get_width():Int return Std.int(blit ? _source.width : _region.width); 
 
 	/**
 	 * Height of the image.
 	 */
 	public var height(get, never):Int;
-	private function get_height():Int { return Std.int(blit ? _source.height : _region.height); }
+	private function get_height():Int return Std.int(blit ? _source.height : _region.height); 
 
 	// Stamp information.
 	private var _source:BitmapData;

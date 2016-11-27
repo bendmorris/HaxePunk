@@ -7,14 +7,12 @@ import com.haxepunk.utils.Key;
 
 import openfl.Assets;
 import flash.display.Bitmap;
-import flash.display.BitmapData;
 import flash.display.BlendMode;
 import flash.display.Graphics;
 import flash.display.Sprite;
 import flash.events.Event;
 import flash.geom.ColorTransform;
 import flash.geom.Rectangle;
-import flash.system.System;
 import flash.text.TextField;
 import flash.text.TextFormat;
 import flash.text.TextFormatAlign;
@@ -23,12 +21,25 @@ import haxe.Log;
 import haxe.PosInfos;
 import haxe.ds.IntMap;
 
+/**
+ * If the console should capture the trace() function calls.
+ * 
+ * To be passed to `Console.enable`.
+ */
 enum TraceCapture
 {
+	/** Traces won't be captured. */
 	No;
+	
+	/** The console will capture the traces. */
 	Yes;
 }
 
+/**
+ * Console used for debugging, shows entities and their masks.
+ * 
+ * Use `HXP.console`.enable to enable it.
+ */
 class Console
 {
 	/**
@@ -36,7 +47,8 @@ class Console
 	 */
 	public var toggleKey:Int;
 
-	public function new()
+	@:allow(com.haxepunk)
+	private function new()
 	{
 		init();
 
@@ -160,7 +172,7 @@ class Console
 	}
 
 	/**
-	 * Show the console.
+	 * Show the console, no effect if the console insn't hidden.
 	 */
 	public function show()
 	{
@@ -172,7 +184,7 @@ class Console
 	}
 
 	/**
-	 * Hide the console.
+	 * Hide the console, no effect if the console isn't visible.
 	 */
 	public function hide()
 	{
@@ -186,8 +198,8 @@ class Console
 	/**
 	 * Enables the console.
 	 *
-	 * @param	trace_capture	Option to capture trace in HaxePunk.
-	 * @param	toggleKey		Key used to toggle the console, tilde (~) by default.
+	 * @param	trace_capture	If the console should capture the trace() function calls.
+	 * @param	toggleKey		Key used to toggle the console, `Key.TILDE` (~) by default, use `Key`.
 	 */
 	public function enable(?trace_capture:TraceCapture, toggleKey=Key.TILDE)
 	{
@@ -199,13 +211,15 @@ class Console
 		// load assets based on embedding method
 		try
 		{
-			_bmpLogo = new Bitmap(Assets.getBitmapData("gfx/debug/console_logo.png"));
-			_butDebug = new Bitmap(Assets.getBitmapData("gfx/debug/console_debug.png"));
-			_butOutput = new Bitmap(Assets.getBitmapData("gfx/debug/console_output.png"));
-			_butPlay = new Bitmap(Assets.getBitmapData("gfx/debug/console_play.png"));
-			_butPause = new Bitmap(Assets.getBitmapData("gfx/debug/console_pause.png"));
-			_butStep = new Bitmap(Assets.getBitmapData("gfx/debug/console_step.png"));
-		} catch (e:Dynamic) {
+			_bmpLogo = new Bitmap(Assets.getBitmapData("graphics/debug/console_logo.png"));
+			_butDebug = new Bitmap(Assets.getBitmapData("graphics/debug/console_debug.png"));
+			_butOutput = new Bitmap(Assets.getBitmapData("graphics/debug/console_output.png"));
+			_butPlay = new Bitmap(Assets.getBitmapData("graphics/debug/console_play.png"));
+			_butPause = new Bitmap(Assets.getBitmapData("graphics/debug/console_pause.png"));
+			_butStep = new Bitmap(Assets.getBitmapData("graphics/debug/console_step.png"));
+		}
+		catch (e:Dynamic)
+		{
 			return;
 		}
 
@@ -366,13 +380,14 @@ class Console
 		// Set the state to unpaused.
 		paused = false;
 
-		if (trace_capture != TraceCapture.No)
+		if (trace_capture == TraceCapture.Yes)
 			Log.trace = traceLog;
 
 		LOG.push("-- HaxePunk v" + HXP.VERSION + " --");
 		if (_enabled && _sprite.visible) updateLog();
 	}
 
+	@:dox(hide)
 	public function onResize(e:Event)
 	{
 		if (_back.bitmapData != null)
@@ -394,7 +409,7 @@ class Console
 	 * If the console should be visible.
 	 */
 	public var visible(get, set):Bool;
-	private function get_visible():Bool { return _sprite.visible; }
+	private function get_visible():Bool return _sprite.visible; 
 	private function set_visible(value:Bool):Bool
 	{
 		_sprite.visible = value;
@@ -417,11 +432,15 @@ class Console
 	/**
 	 * Console update, called by game loop.
 	 */
+	@:dox(hide)
 	public function update()
 	{
 		// Quit if the console isn't enabled or visible.
 		if (!_enabled || !_visible)
 			return;
+
+		if (_paused)
+			HXP.engine.render();
 
 		// move on resize
 		_entRead.x = width - _entReadText.width;
@@ -519,7 +538,7 @@ class Console
 	 * If the Console is currently in paused mode.
 	 */
 	public var paused(get, set):Bool;
-	private function get_paused():Bool { return _paused; }
+	private function get_paused():Bool return _paused; 
 	private function set_paused(value:Bool):Bool
 	{
 		// Quit if the console isn't enabled.
@@ -542,6 +561,8 @@ class Console
 			// Set the console to paused mode.
 			if (_debug) debug = true;
 			else updateLog();
+
+			Input.showCursor();
 		}
 		else
 		{
@@ -552,6 +573,10 @@ class Console
 			HXP.clear(ENTITY_LIST);
 			HXP.clear(SCREEN_LIST);
 			HXP.clear(SELECT_LIST);
+
+			var cursor = HXP.cursor;
+			HXP.cursor = null;
+			HXP.cursor = cursor;
 		}
 		return _paused;
 	}
@@ -560,7 +585,7 @@ class Console
 	 * If the Console is currently in debug mode.
 	 */
 	public var debug(get, set):Bool;
-	private function get_debug():Bool { return _debug; }
+	private function get_debug():Bool return _debug; 
 	private function set_debug(value:Bool):Bool
 	{
 		// Quit if the console isn't enabled.
@@ -582,7 +607,6 @@ class Console
 	private function stepFrame()
 	{
 		HXP.engine.update();
-		HXP.engine.render();
 		updateEntityCount();
 		updateEntityLists();
 		renderEntities();
@@ -806,6 +830,8 @@ class Console
 		var e:Entity;
 		// If debug mode is on.
 		_entScreen.visible = _debug;
+		_entScreen.x = HXP.screen.x;
+		_entScreen.y = HXP.screen.y;
 		if (_debug)
 		{
 			var g:Graphics = _entScreen.graphics,
@@ -900,7 +926,7 @@ class Console
 				var i:Int = (LOG.length > _logLines) ? Std.int(Math.round((LOG.length - _logLines) * _logScroll)) : 0,
 					n:Int = Std.int(i + Math.min(_logLines, LOG.length)),
 					s:String = "";
-				while (i < n) s += LOG[i ++] + "\n";
+				while (i < n) s += LOG[i++] + "\n";
 				_logReadText1.text = s;
 			}
 			else _logReadText1.text = "";
@@ -963,8 +989,10 @@ class Console
 		_fpsInfoText1.text =
 			"System: " + Std.string(HXP._systemTime) + "ms\n" +
 			"Game: " + Std.string(HXP._gameTime) + "ms";
+#if !js
 		_memReadText.text =
-			(width >= BIG_WIDTH_THRESHOLD ? "Mem: " : "") + HXP.round(System.totalMemory / 1024 / 1024, 2) + "MB";
+			(width >= BIG_WIDTH_THRESHOLD ? "Mem: " : "") + HXP.round(flash.system.System.totalMemory / 1024 / 1024, 2) + "MB";
+#end
 	}
 
 	/** @private Update the debug panel text. */
@@ -1077,7 +1105,7 @@ class Console
 	{
 		_format.size = size;
 		_format.color = color;
-		switch(align)
+		switch (align)
 		{
 			case "left":
 				_format.align = TextFormatAlign.LEFT;
@@ -1092,13 +1120,16 @@ class Console
 	}
 
 	/**
-	 * Get the unscaled screen size for the Console.
+	 * Get the unscaled screen width for the Console.
 	 */
 	public var width(get, never):Int;
-	private function get_width():Int { return HXP.windowWidth; }
+	private function get_width():Int return HXP.windowWidth; 
 
+	/**
+	 * Get the unscaled screen height for the Console.
+	 */
 	public var height(get, never):Int;
-	private function get_height():Int { return HXP.windowHeight; }
+	private function get_height():Int return HXP.windowHeight; 
 
 	// Console state information.
 	private var _enabled:Bool;

@@ -1,24 +1,31 @@
 package com.haxepunk;
 
-import com.haxepunk.graphics.atlas.Atlas;
-import com.haxepunk.graphics.Image;
-
 import flash.display.Bitmap;
-import flash.display.BitmapData;
 import flash.display.PixelSnapping;
 import flash.display.Sprite;
 import flash.filters.BitmapFilter;
 import flash.geom.Matrix;
+import com.haxepunk.graphics.atlas.Atlas;
+import com.haxepunk.graphics.Image;
+import com.haxepunk.screen.ScaleMode;
 
 /**
  * Container for the main screen buffer. Can be used to transform the screen.
+ * To be used through `HXP.screen`.
  */
+@:allow(com.haxepunk.screen)
 class Screen
 {
 	/**
+	 * Controls how the game scale changes when the window is resized.
+	 */
+	public var scaleMode:ScaleMode = new ScaleMode();
+
+	/**
 	 * Constructor.
 	 */
-	public function new()
+	@:allow(com.haxepunk)
+	private function new()
 	{
 		_sprite = new Sprite();
 		_bitmap = new Array<Bitmap>();
@@ -30,8 +37,7 @@ class Screen
 		x = y = originX = originY = 0;
 		_angle = _current = 0;
 		scale = scaleX = scaleY = 1;
-		_color = 0xFF202020;
-		update();
+		updateTransformation();
 
 		// create screen buffers
 		if (HXP.engine.contains(_sprite))
@@ -56,12 +62,24 @@ class Screen
 	/**
 	 * Resizes the screen by recreating the bitmap buffer.
 	 */
-	public function resize()
+	@:dox(hide)
+	@:allow(com.haxepunk.HXP)
+	function resize(width:Int, height:Int)
 	{
-		width = HXP.width;
-		height = HXP.height;
+		var oldWidth:Int = HXP.width,
+			oldHeight:Int = HXP.height;
 
-		if (HXP.renderMode == RenderMode.BUFFER)
+		HXP.camera.x += HXP.screen.offsetX;
+		HXP.camera.y += HXP.screen.offsetY;
+		scaleMode.resize(width, height);
+		HXP.camera.x -= HXP.screen.offsetX;
+		HXP.camera.y -= HXP.screen.offsetY;
+
+		width = HXP.width = Std.int(HXP.screen.width / HXP.screen.fullScaleX);
+		height = HXP.height = Std.int(HXP.screen.height / HXP.screen.fullScaleY);
+
+		if (HXP.renderMode == RenderMode.BUFFER &&
+			(_bitmap.length == 0 || width != oldWidth || height != oldHeight))
 		{
 			disposeBitmap(_bitmap[0]);
 			disposeBitmap(_bitmap[1]);
@@ -85,14 +103,13 @@ class Screen
 	{
 		if (HXP.renderMode == RenderMode.BUFFER)
 		{
-			#if !bitfive _current = 1 - _current; #end
+			_current = 1 - _current;
 			HXP.buffer = _bitmap[_current].bitmapData;
 		}
 	}
 
 	/**
 	 * Add a filter.
-	 *
 	 * @param	filter	The filter to add.
 	 */
 	public function addFilter(filter:Array<BitmapFilter>)
@@ -106,7 +123,7 @@ class Screen
 	public function refresh()
 	{
 		// refreshes the screen
-		HXP.buffer.fillRect(HXP.bounds, _color);
+		HXP.buffer.fillRect(HXP.bounds, 0xFF000000 | HXP.stage.color);
 	}
 
 	/**
@@ -123,7 +140,7 @@ class Screen
 	}
 
 	/** @private Re-applies transformation matrix. */
-	public function update()
+	private function updateTransformation()
 	{
 		if (_matrix == null)
 		{
@@ -140,20 +157,38 @@ class Screen
 		_sprite.transform.matrix = _matrix;
 	}
 
+	@:dox(hide)
+	public function update()
+	{
+		// screen shake
+		if (_shakeTime > 0)
+		{
+			var sx:Int = Std.random(_shakeMagnitude * 2 + 1) - _shakeMagnitude;
+			var sy:Int = Std.random(_shakeMagnitude * 2 + 1) - _shakeMagnitude;
+
+			x += sx - _shakeX;
+			y += sy - _shakeY;
+
+			_shakeX = sx;
+			_shakeY = sy;
+
+			_shakeTime -= HXP.elapsed;
+			if (_shakeTime < 0) _shakeTime = 0;
+		}
+		else if (_shakeX != 0 || _shakeY != 0)
+		{
+			x -= _shakeX;
+			y -= _shakeY;
+			_shakeX = _shakeY = 0;
+		}
+	}
+
 	/**
 	 * Refresh color of the screen.
 	 */
 	public var color(get, set):Int;
-	private function get_color():Int { return _color; }
-	private function set_color(value:Int):Int
-	{
-#if (flash || html5)
-		_color = 0xFF000000 | value;
-#elseif debug
-		HXP.log("screen.color should only be set in flash and html5");
-#end
-		return value;
-	}
+	inline function get_color():Null<Int> return HXP.stage.color;
+	inline function set_color(value:Null<Int>):Null<Int> return HXP.stage.color = value;
 
 	/**
 	 * X offset of the screen.
@@ -162,8 +197,8 @@ class Screen
 	private function set_x(value:Int):Int
 	{
 		if (x == value) return value;
-		x = value;
-		update();
+		HXP.engine.x = x = value;
+		updateTransformation();
 		return x;
 	}
 
@@ -174,8 +209,8 @@ class Screen
 	private function set_y(value:Int):Int
 	{
 		if (y == value) return value;
-		y = value;
-		update();
+		HXP.engine.y = y = value;
+		updateTransformation();
 		return y;
 	}
 
@@ -187,7 +222,7 @@ class Screen
 	{
 		if (originX == value) return value;
 		originX = value;
-		update();
+		updateTransformation();
 		return originX;
 	}
 
@@ -199,7 +234,7 @@ class Screen
 	{
 		if (originY == value) return value;
 		originY = value;
-		update();
+		updateTransformation();
 		return originY;
 	}
 
@@ -210,12 +245,15 @@ class Screen
 	private function set_scaleX(value:Float):Float
 	{
 		if (scaleX == value) return value;
+		_scaleXMult *= value / scaleX;
 		scaleX = value;
 		fullScaleX = scaleX * scale;
-		update();
+		updateTransformation();
 		needsResize = true;
 		return scaleX;
 	}
+	/* Track extra scale added by user */
+	var _scaleXMult:Float = 1;
 
 	/**
 	 * Y scale of the screen.
@@ -224,12 +262,15 @@ class Screen
 	private function set_scaleY(value:Float):Float
 	{
 		if (scaleY == value) return value;
+		_scaleYMult *= value / scaleY;
 		scaleY = value;
 		fullScaleY = scaleY * scale;
-		update();
+		updateTransformation();
 		needsResize = true;
 		return scaleY;
 	}
+	/* Track extra scale added by user */
+	var _scaleYMult:Float = 1;
 
 	/**
 	 * Scale factor of the screen. Final scale is scaleX * scale by scaleY * scale, so
@@ -242,7 +283,7 @@ class Screen
 		scale = value;
 		fullScaleX = scaleX * scale;
 		fullScaleY = scaleY * scale;
-		update();
+		updateTransformation();
 		needsResize = true;
 		return scale;
 	}
@@ -260,18 +301,19 @@ class Screen
 	/**
 	 * True if the scale of the screen has changed.
 	 */
+	@:dox(hide)
 	public var needsResize(default, null):Bool = false;
 
 	/**
 	 * Rotation of the screen, in degrees.
 	 */
 	public var angle(get, set):Float;
-	private function get_angle():Float { return _angle * HXP.DEG; }
+	private function get_angle():Float return _angle * HXP.DEG;
 	private function set_angle(value:Float):Float
 	{
 		if (_angle == value * HXP.RAD) return value;
 		_angle = value * HXP.RAD;
-		update();
+		updateTransformation();
 		return _angle;
 	}
 
@@ -306,27 +348,37 @@ class Screen
 	/**
 	 * Width of the screen.
 	 */
-	public var width(default, null):Int;
+	public var width(default, null):Int = 0;
 
 	/**
 	 * Height of the screen.
 	 */
-	public var height(default, null):Int;
+	public var height(default, null):Int = 0;
 
 	/**
 	 * X position of the mouse on the screen.
 	 */
 	public var mouseX(get, null):Int;
-	private function get_mouseX():Int { return Std.int(_sprite.mouseX); }
+	private function get_mouseX():Int return Std.int(_sprite.mouseX);
 
 	/**
 	 * Y position of the mouse on the screen.
 	 */
 	public var mouseY(get, null):Int;
-	private function get_mouseY():Int { return Std.int(_sprite.mouseY); }
+	private function get_mouseY():Int return Std.int(_sprite.mouseY);
+
+	/**
+	 * X position offset applied to the camera.
+	 */
+	public var offsetX:Int = 0;
+	/**
+	 * Y position offset applied to the camera.
+	 */
+	public var offsetY:Int = 0;
 
 	/**
 	 * Captures the current screen as an Image object.
+	 * Will only work in buffer rendermode (flash or html5).
 	 * @return	A new Image object.
 	 */
 	public function capture():Image
@@ -341,11 +393,35 @@ class Screen
 		}
 	}
 
+	/**
+	 * Cause the screen to shake for a specified length of time.
+	 * @param	magnitude	Number of pixels to shake in any direction.
+	 * @param	duration	Duration of shake effect, in seconds.
+	 * @since	2.5.3
+	 */
+	public function shake(magnitude:Int = 4, duration:Float = 0.5)
+	{
+		if (_shakeTime < duration) _shakeTime = duration;
+		_shakeMagnitude = magnitude;
+	}
+
+	/**
+	 * Stop the screen from shaking immediately.
+	 * @since	2.5.3
+	 */
+	public function shakeStop()
+	{
+		_shakeTime = 0;
+	}
+
 	// Screen infromation.
 	private var _sprite:Sprite;
 	private var _bitmap:Array<Bitmap>;
 	private var _current:Int;
 	private var _matrix:Matrix;
 	private var _angle:Float;
-	private var _color:Int;
+	private var _shakeTime:Float=0;
+	private var _shakeMagnitude:Int=0;
+	private var _shakeX:Int=0;
+	private var _shakeY:Int=0;
 }
