@@ -1,7 +1,7 @@
 package haxepunk.graphics.hardware;
 
-import flash.Assets;
-import flash.display.BitmapData;
+import openfl.Assets;
+import openfl.display.BitmapData;
 import haxe.ds.StringMap;
 import haxepunk.utils.Color;
 

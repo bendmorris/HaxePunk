@@ -1,7 +1,7 @@
 package haxepunk.graphics.hardware;
 
-import flash.display.OpenGLView;
-import flash.geom.Rectangle;
+import openfl.display.OpenGLView;
+import openfl.geom.Rectangle;
 
 @:access(haxepunk.Scene)
 @:access(haxepunk.graphics.hardware.SceneRenderer)

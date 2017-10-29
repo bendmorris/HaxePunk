@@ -1,13 +1,13 @@
 package haxepunk;
 
 import haxe.Timer;
-import flash.display.Sprite;
-import flash.display.Stage;
-import flash.display.StageDisplayState;
-import flash.geom.Matrix;
-import flash.geom.Point;
-import flash.geom.Rectangle;
-import flash.ui.Mouse;
+import openfl.display.Sprite;
+import openfl.display.Stage;
+import openfl.display.StageDisplayState;
+import openfl.geom.Matrix;
+import openfl.geom.Point;
+import openfl.geom.Rectangle;
+import openfl.ui.Mouse;
 import haxepunk.Tween.TweenType;
 import haxepunk.debug.Console;
 import haxepunk.tweens.misc.Alarm;
@@ -26,7 +26,8 @@ class HXP
 	 * The HaxePunk version.
 	 * Format: Major.Minor.Patch
 	 */
-	public static inline var VERSION:String = HaxelibInfo.version;
+	public static var VERSION(get, never):String;
+	static inline function get_VERSION() return HaxelibInfo.version;
 
 	/**
 	 * Width of the game.

@@ -1,10 +1,10 @@
 package haxepunk.input;
 
-import flash.geom.Point;
+import openfl.geom.Point;
 #if lime
 import lime.ui.Gamepad as LimeGamepad;
 #else
-import flash.events.JoystickEvent;
+import openfl.events.JoystickEvent;
 #end
 import haxepunk.HXP;
 import haxepunk.Signal;

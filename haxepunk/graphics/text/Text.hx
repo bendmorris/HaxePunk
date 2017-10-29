@@ -1,14 +1,14 @@
 package haxepunk.graphics.text;
 
 import haxe.ds.StringMap;
-import flash.geom.ColorTransform;
-import flash.geom.Matrix;
-import flash.geom.Point;
-import flash.geom.Rectangle;
-import flash.text.TextField;
-import flash.text.TextFormat;
-import flash.text.TextFormatAlign;
-import flash.Assets;
+import openfl.geom.ColorTransform;
+import openfl.geom.Matrix;
+import openfl.geom.Point;
+import openfl.geom.Rectangle;
+import openfl.text.TextField;
+import openfl.text.TextFormat;
+import openfl.text.TextFormatAlign;
+import openfl.Assets;
 import haxepunk.HXP;
 import haxepunk.graphics.atlas.Atlas;
 import haxepunk.graphics.atlas.AtlasRegion;

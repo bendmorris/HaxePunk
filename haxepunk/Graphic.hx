@@ -2,8 +2,8 @@ package haxepunk;
 
 import haxe.ds.Either;
 import haxepunk.utils.BlendMode;
-import flash.geom.Point;
-import flash.geom.Rectangle;
+import openfl.geom.Point;
+import openfl.geom.Rectangle;
 import haxepunk.graphics.atlas.Atlas;
 import haxepunk.graphics.atlas.TileAtlas;
 import haxepunk.graphics.atlas.AtlasRegion;

@@ -1,8 +1,8 @@
 package haxepunk.debug;
 
 import haxepunk.utils.BlendMode;
-import flash.geom.Point;
-import flash.geom.Rectangle;
+import openfl.geom.Point;
+import openfl.geom.Rectangle;
 import haxepunk.HXP;
 import haxepunk.cameras.UICamera;
 import haxepunk.graphics.Image;
@@ -308,7 +308,7 @@ class Console extends Scene
 	{
 		var s = HXP.elapsed / SAMPLE_TIME;
 		_fps += 1 / HXP.elapsed * s;
-		_mem += flash.system.System.totalMemory / 1024 / 1024 * s;
+		_mem += openfl.system.System.totalMemory / 1024 / 1024 * s;
 		_ent += HXP.scene.count * s;
 		_tri += Renderer.triangleCount * s;
 		_dc += Renderer.drawCallCount * s;

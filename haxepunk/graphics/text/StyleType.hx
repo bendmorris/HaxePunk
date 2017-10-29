@@ -1,6 +1,6 @@
 package haxepunk.graphics.text;
 
-import flash.text.TextFormat;
+import openfl.text.TextFormat;
 
 /**
  * Abstract representing either a `TextFormat` or a `TextOptions`.

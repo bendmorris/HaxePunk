@@ -71,7 +71,7 @@ class NMEPreloader extends Sprite {
 			
 		} else {
 			
-			return flash.Lib.current.stage.stageHeight;
+			return openfl.Lib.current.stage.stageHeight;
 			
 		}
 		
@@ -88,7 +88,7 @@ class NMEPreloader extends Sprite {
 			
 		} else {
 			
-			return flash.Lib.current.stage.stageWidth;
+			return openfl.Lib.current.stage.stageWidth;
 			
 		}
 		

@@ -1,7 +1,7 @@
 import haxepunk.Engine;
 import haxepunk.HXP;
 import openfl.display.FPS;
-import flash.Lib;
+import openfl.Lib;
 
 class Main extends Engine
 {

@@ -1,6 +1,6 @@
 package platformer.entities;
 
-import flash.geom.Point;
+import openfl.geom.Point;
 import haxepunk.HXP;
 import haxepunk.Entity;
 import haxepunk.math.MathUtil;

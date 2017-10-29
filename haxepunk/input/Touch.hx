@@ -1,8 +1,8 @@
 package haxepunk.input;
 
-import flash.events.TouchEvent;
-import flash.ui.Multitouch;
-import flash.ui.MultitouchInputMode;
+import openfl.events.TouchEvent;
+import openfl.ui.Multitouch;
+import openfl.ui.MultitouchInputMode;
 import haxepunk.HXP;
 
 class Touch

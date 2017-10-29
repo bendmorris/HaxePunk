@@ -10,7 +10,7 @@ import haxepunk.math.Projection;
 import haxepunk.math.Vector2;
 import haxepunk.math.MathUtil;
 import haxepunk.math.MakeConvex;
-import flash.geom.Point;
+import openfl.geom.Point;
 
 
 /**

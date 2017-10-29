@@ -1,7 +1,7 @@
 package haxepunk.graphics;
 
-import flash.geom.Point;
-import flash.geom.Rectangle;
+import openfl.geom.Point;
+import openfl.geom.Rectangle;
 import haxepunk.Camera;
 import haxepunk.Graphic;
 import haxepunk.HXP;

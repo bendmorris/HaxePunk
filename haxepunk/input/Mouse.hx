@@ -1,7 +1,7 @@
 package haxepunk.input;
 
-import flash.events.MouseEvent;
-import flash.ui.Mouse as FlashMouse;
+import openfl.events.MouseEvent;
+import openfl.ui.Mouse as FlashMouse;
 import haxepunk.HXP;
 
 @:enum

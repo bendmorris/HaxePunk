@@ -1,6 +1,6 @@
 package haxepunk.graphics.text;
 
-import flash.text.TextFormatAlign;
+import openfl.text.TextFormatAlign;
 
 @:dox(hide)
 #if lime

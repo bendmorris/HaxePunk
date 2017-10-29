@@ -1,13 +1,13 @@
 package haxepunk;
 
-import flash.display.Sprite;
-import flash.display.StageAlign;
-import flash.display.StageDisplayState;
-import flash.display.StageQuality;
-import flash.display.StageScaleMode;
-import flash.events.Event;
-import flash.geom.Rectangle;
-import flash.Lib;
+import openfl.display.Sprite;
+import openfl.display.StageAlign;
+import openfl.display.StageDisplayState;
+import openfl.display.StageQuality;
+import openfl.display.StageScaleMode;
+import openfl.events.Event;
+import openfl.geom.Rectangle;
+import openfl.Lib;
 import haxepunk.Signal;
 import haxepunk.debug.Console;
 import haxepunk.graphics.hardware.EngineRenderer;
@@ -223,7 +223,7 @@ class Engine extends Sprite
 		});
 
 #if (!html5 && openfl_legacy)
-		flash.display.Stage.shouldRotateInterface = function(orientation:Int):Bool
+		openfl.display.Stage.shouldRotateInterface = function(orientation:Int):Bool
 		{
 			if (HXP.indexOf(HXP.orientations, orientation) == -1) return false;
 			var tmp = HXP.height;
@@ -284,7 +284,7 @@ class Engine extends Sprite
 			Lib.close();
 		}
 		#else
-		flash.Lib.current.stage.application.onExit.add(function(_) {
+		openfl.Lib.current.stage.application.onExit.add(function(_) {
 			onClose.invoke();
 		});
 		#end

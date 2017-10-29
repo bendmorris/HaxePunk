@@ -1,9 +1,9 @@
 package haxepunk.graphics.atlas;
 
 import haxepunk.utils.BlendMode;
-import flash.geom.Rectangle;
-import flash.geom.Point;
-import flash.geom.Matrix;
+import openfl.geom.Rectangle;
+import openfl.geom.Point;
+import openfl.geom.Matrix;
 import haxepunk.utils.Color;
 import haxepunk.math.MathUtil;
 import haxepunk.graphics.shader.Shader;

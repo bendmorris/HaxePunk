@@ -1,7 +1,7 @@
 package haxepunk.graphics.hardware;
 
-import flash.geom.Rectangle;
-import flash.geom.Point;
+import openfl.geom.Rectangle;
+import openfl.geom.Point;
 import haxepunk.graphics.hardware.opengl.GL;
 import haxepunk.graphics.hardware.opengl.GLFramebuffer;
 import haxepunk.graphics.hardware.opengl.GLUtils;

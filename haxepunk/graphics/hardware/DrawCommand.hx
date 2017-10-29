@@ -1,6 +1,6 @@
 package haxepunk.graphics.hardware;
 
-import flash.geom.Rectangle;
+import openfl.geom.Rectangle;
 import haxepunk.graphics.shader.Shader;
 import haxepunk.utils.BlendMode;
 import haxepunk.utils.Color;

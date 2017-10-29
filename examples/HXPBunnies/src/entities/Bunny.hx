@@ -4,7 +4,7 @@ import haxepunk.Entity;
 import haxepunk.HXP;
 import haxepunk.graphics.Image;
 import haxepunk.Graphic;
-import flash.geom.Point;
+import openfl.geom.Point;
 
 /**
  * ...

@@ -13,7 +13,7 @@ import haxepunk.input.Input;
 import haxepunk.input.Key;
 import haxepunk.input.Mouse;
 import haxepunk.Scene;
-import flash.Lib;
+import openfl.Lib;
 import entities.Bunny;
 
 class GameScene extends Scene

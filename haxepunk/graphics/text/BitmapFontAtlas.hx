@@ -1,6 +1,6 @@
 package haxepunk.graphics.text;
 
-import flash.Assets;
+import openfl.Assets;
 import haxe.xml.Fast;
 import haxepunk.HXP;
 import haxepunk.graphics.atlas.AtlasDataType;

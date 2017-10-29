@@ -56,7 +56,7 @@ class GLUtils
 		return object == null;
 	}
 #else
-	public static inline function invalid(object:flash.gl.GLObject)
+	public static inline function invalid(object:openfl.gl.GLObject)
 	{
 		return object == null || !object.isValid();
 	}

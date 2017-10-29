@@ -1,6 +1,6 @@
 package haxepunk;
 
-import flash.geom.Point;
+import openfl.geom.Point;
 import haxe.ds.Either.Left;
 import haxe.ds.Either.Right;
 import haxepunk.Signal.Signal0;

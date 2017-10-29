@@ -1,6 +1,6 @@
 package haxepunk.graphics;
 
-import flash.geom.Point;
+import openfl.geom.Point;
 import haxepunk.Graphic;
 import haxepunk.graphics.atlas.AtlasData;
 import haxepunk.graphics.shader.ColorShader;

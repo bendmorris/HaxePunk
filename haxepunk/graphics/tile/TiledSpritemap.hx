@@ -1,6 +1,6 @@
 package haxepunk.graphics.tile;
 
-import flash.geom.Point;
+import openfl.geom.Point;
 import haxepunk.Graphic.TileType;
 
 /**

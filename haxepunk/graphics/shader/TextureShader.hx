@@ -1,6 +1,6 @@
 package haxepunk.graphics.shader;
 
-import flash.Assets;
+import openfl.Assets;
 
 class TextureShader extends Shader
 {

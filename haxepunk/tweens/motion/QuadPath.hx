@@ -1,7 +1,7 @@
 package haxepunk.tweens.motion;
 
 import haxepunk.utils.Ease.EaseFunction;
-import flash.geom.Point;
+import openfl.geom.Point;
 
 /**
  * A series of points which will determine a path from the

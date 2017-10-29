@@ -1,8 +1,8 @@
 package haxepunk.masks;
 
 import haxepunk.Mask;
-import flash.geom.Point;
-import flash.geom.Rectangle;
+import openfl.geom.Point;
+import openfl.geom.Rectangle;
 import haxepunk.HXP;
 import haxepunk.graphics.hardware.Texture;
 

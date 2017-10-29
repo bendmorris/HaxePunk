@@ -24,7 +24,7 @@ typedef TextOptions =
 	/** Optional. If the text field uses a rich text string. */
 	@:optional var richText:Bool;
 	/** Optional. Any Bitmap Filters To Alter Text Style */
-	@:optional var filters:Array<flash.filters.BitmapFilter>;
+	@:optional var filters:Array<openfl.filters.BitmapFilter>;
 	/** Optional. If the text should draw a border. */
 	@:optional var border:BorderOptions;
 };

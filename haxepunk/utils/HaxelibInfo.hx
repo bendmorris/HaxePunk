@@ -82,4 +82,9 @@ class HaxelibInfoBuilder
 /**
  * Access HaxePunk's haxelib.json from your code.
  */
-class HaxelibInfo {}
+class HaxelibInfo
+{
+	#if macro
+	public static var version:String = "";
+	#end
+}

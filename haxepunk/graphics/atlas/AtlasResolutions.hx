@@ -1,8 +1,8 @@
 package haxepunk.graphics.atlas;
 
 import haxepunk.utils.BlendMode;
-import flash.geom.Rectangle;
-import flash.geom.Point;
+import openfl.geom.Rectangle;
+import openfl.geom.Point;
 import haxepunk.graphics.shader.Shader;
 import haxepunk.utils.Color;
 

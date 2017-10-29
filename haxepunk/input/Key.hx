@@ -1,7 +1,7 @@
 package haxepunk.input;
 
-import flash.events.KeyboardEvent;
-import flash.ui.Keyboard;
+import openfl.events.KeyboardEvent;
+import openfl.ui.Keyboard;
 
 /**
  * List of keys to be used with `Input`.

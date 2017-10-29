@@ -1,6 +1,6 @@
 package haxepunk.graphics.shader;
 
-import flash.Assets;
+import openfl.Assets;
 import haxepunk.graphics.hardware.opengl.GL;
 import haxepunk.graphics.hardware.opengl.GLBuffer;
 import haxepunk.graphics.hardware.opengl.GLUniformLocation;

@@ -1,6 +1,6 @@
 package haxepunk.input;
 
-import flash.ui.Multitouch;
+import openfl.ui.Multitouch;
 import haxepunk.HXP;
 import haxepunk.Signal.Signals;
 import haxepunk.debug.Console;
@@ -28,7 +28,7 @@ class Input
 	 */
 	public static var multiTouchSupported(default, null):Bool = false;
 
-	#if (cpp || neko)
+	#if (!macro && (cpp || neko))
 	static var _signals:Deque<String> = new Deque();
 	#else
 	static var _signals:Array<String> = new Array();
@@ -36,7 +36,7 @@ class Input
 
 	static inline function pushSignal(s:String)
 	{
-		#if (cpp || neko)
+		#if (!macro && (cpp || neko))
 		_signals.add(s);
 		#else
 		_signals.push(s);
@@ -150,7 +150,7 @@ class Input
 
 	static inline function triggerSignals()
 	{
-		#if (cpp || neko)
+		#if (!macro && (cpp || neko))
 		var op:String;
 		while ((op = _signals.pop(false)) != null)
 		{
@@ -182,7 +182,7 @@ class Input
 				default: {}
 			}
 		}
-		#if (!(cpp || neko))
+		#if (macro || !(cpp || neko))
 		HXP.clear(_signals);
 		#end
 	}
